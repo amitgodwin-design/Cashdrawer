@@ -1,0 +1,5168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Cash Drawer — Branch Teller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+/* ==========================================================================
+   DESIGN TOKENS
+   ========================================================================== */
+:root {
+  --navy-900: #0f172a;
+  --navy-800: #1e293b;
+  --navy-600: #334155;
+  --navy-400: #64748b;
+  --navy-300: #94a3b8;
+  --gray-100: #f1f5f9;
+  --gray-50:  #f8fafc;
+  --gray-200: #e2e8f0;
+  --white: #ffffff;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --green-50:  #f0fdf4;
+  --red-500:   #ef4444;
+  --red-600:   #dc2626;
+  --red-50:    #fef2f2;
+  --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --amber-50:  #fffbeb;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 24px 48px rgba(15, 23, 42, 0.12);
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --focus-ring: 0 0 0 3px rgba(34, 197, 94, 0.4);
+}
+
+/* ==========================================================================
+   RESET & BASE
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  font-family: var(--font-body);
+  color: var(--navy-900);
+  background: var(--gray-100);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 15px;
+  line-height: 1.5;
+}
+button, input, textarea, select { font-family: inherit; font-size: inherit; color: inherit; }
+button { cursor: pointer; border: none; background: none; }
+input, textarea, select { outline: none; border: none; background: none; }
+input:disabled, button:disabled, textarea:disabled, select:disabled { cursor: not-allowed; }
+
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* ==========================================================================
+   APP SHELL
+   ========================================================================== */
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--gray-100);
+  position: relative;
+  overflow: hidden;
+}
+@media (min-width: 481px) {
+  body { background: var(--navy-900); padding: 24px 0; }
+  .app {
+    min-height: calc(100vh - 48px);
+    border-radius: 32px;
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
+  }
+}
+
+.sync-banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--amber-50);
+  color: var(--amber-600);
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px solid var(--amber-500);
+  display: none;
+}
+.sync-banner.show { display: block; }
+
+/* ==========================================================================
+   SCREEN ROUTER
+   ========================================================================== */
+.screen {
+  display: none;
+  min-height: 100vh;
+  flex-direction: column;
+  animation: screenIn 0.35s var(--ease-out);
+}
+@media (min-width: 481px) {
+  .screen { min-height: calc(100vh - 48px); }
+}
+.screen.active { display: flex; }
+
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   SPLASH
+   ========================================================================== */
+#splash {
+  background: linear-gradient(160deg, #0f172a 0%, #1e293b 100%);
+  color: white;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.splash-glow {
+  position: absolute;
+  width: 520px; height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.18), transparent 65%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  filter: blur(40px);
+}
+.splash-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+.drawer-anim {
+  width: 180px;
+  height: 120px;
+  position: relative;
+  perspective: 600px;
+}
+.drawer-body {
+  position: absolute;
+  inset: 30px 0 0 0;
+  background: linear-gradient(180deg, #334155, #1e293b);
+  border-radius: 8px 8px 16px 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 -2px 0 rgba(0,0,0,0.4);
+}
+.drawer-front {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 70px;
+  background: linear-gradient(180deg, #475569, #334155);
+  border-radius: 0 0 16px 16px;
+  transform-origin: top center;
+  animation: drawerOpen 1.4s var(--ease-out) 0.4s both;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 16px rgba(0,0,0,0.4);
+}
+.drawer-front::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 36px; height: 6px;
+  background: rgba(0,0,0,0.4);
+  transform: translate(-50%, -50%);
+  border-radius: 3px;
+}
+.drawer-cash {
+  position: absolute;
+  top: 6px; left: 50%;
+  transform: translateX(-50%);
+  width: 90px; height: 28px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border-radius: 3px;
+  opacity: 0;
+  animation: cashRise 0.6s var(--ease-out) 1.2s both;
+  box-shadow: 0 2px 6px rgba(34,197,94,0.4);
+}
+.drawer-cash::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 60%; height: 60%;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 2px;
+  transform: translate(-50%, -50%);
+}
+.drawer-cash.c2 { top: 10px; width: 86px; animation-delay: 1.35s; }
+.drawer-cash.c3 { top: 14px; width: 82px; animation-delay: 1.5s; }
+
+@keyframes drawerOpen {
+  0%   { transform: rotateX(0deg); }
+  60%  { transform: rotateX(70deg); }
+  100% { transform: rotateX(60deg); }
+}
+@keyframes cashRise {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.splash-brand {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--green-500);
+  opacity: 0;
+  animation: fadeUp 0.6s var(--ease-out) 0.2s both;
+}
+.splash-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  max-width: 280px;
+  opacity: 0;
+  animation: fadeUp 0.6s var(--ease-out) 0.5s both;
+}
+.splash-subtitle {
+  font-size: 14px;
+  color: var(--navy-300);
+  opacity: 0;
+  animation: fadeUp 0.6s var(--ease-out) 0.7s both;
+}
+.splash-skip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--navy-400);
+  opacity: 0;
+  animation: fadeUp 0.6s var(--ease-out) 1.4s both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   PIN LOCK
+   ========================================================================== */
+#pin-screen, #setup-pin-screen, #supervisor-pin-screen {
+  background: var(--navy-900);
+  color: white;
+  padding: 48px 24px 32px;
+  align-items: center;
+  justify-content: space-between;
+}
+.pin-header { text-align: center; }
+.pin-icon {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--green-500);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.pin-icon.warn { background: rgba(245, 158, 11, 0.15); color: var(--amber-500); }
+.pin-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.pin-hint {
+  margin-top: 8px;
+  color: var(--navy-300);
+  font-size: 14px;
+  max-width: 300px;
+}
+.pin-dots {
+  display: flex; gap: 16px;
+  margin: 32px 0;
+}
+.pin-dot {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--navy-600);
+  transition: all 0.2s var(--ease);
+}
+.pin-dot.filled {
+  background: var(--green-500);
+  border-color: var(--green-500);
+  transform: scale(1.1);
+}
+.pin-dot.error { border-color: var(--red-500); animation: shake 0.4s; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.pin-error {
+  color: var(--red-500);
+  font-size: 13px;
+  height: 18px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.pin-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+}
+.pin-key {
+  height: 64px;
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.06);
+  color: white;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  transition: all 0.15s var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.pin-key:active:not(:disabled) { background: rgba(255,255,255,0.12); transform: scale(0.96); }
+.pin-key:disabled { opacity: 0.3; }
+.pin-key.action {
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--navy-300);
+}
+.pin-key.action:active { color: white; }
+.pin-info {
+  font-size: 12px;
+  color: var(--navy-400);
+  text-align: center;
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pin-lockout {
+  color: var(--red-500);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   HEADER
+   ========================================================================== */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 20px 16px;
+  background: var(--white);
+}
+.app-header.with-back { padding: 20px; }
+.header-back {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  color: var(--navy-800);
+  transition: background 0.15s;
+}
+.header-back:active { background: var(--gray-100); }
+.header-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+.header-greeting { display: flex; flex-direction: column; }
+.header-greeting .small {
+  font-size: 12px;
+  color: var(--navy-400);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.header-greeting .big {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+}
+.avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--navy-900), var(--navy-600));
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   DASHBOARD
+   ========================================================================== */
+#dashboard { background: var(--gray-100); }
+.dash-content {
+  flex: 1;
+  padding: 0 20px 32px;
+}
+
+.balance-card {
+  background: linear-gradient(135deg, var(--navy-900), var(--navy-800));
+  color: white;
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 24px;
+}
+.balance-card::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(34,197,94,0.18), transparent 60%);
+  border-radius: 50%;
+}
+.balance-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy-300);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--navy-400);
+}
+.status-dot.open { background: var(--green-500); box-shadow: 0 0 0 4px rgba(34,197,94,0.18); }
+.status-dot.closed { background: var(--red-500); }
+.balance-amount {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-top: 8px;
+  position: relative;
+  word-break: break-all;
+}
+.balance-amount .currency {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--navy-300);
+  margin-right: 4px;
+  vertical-align: top;
+  position: relative;
+  top: 8px;
+}
+.balance-meta {
+  display: flex;
+  gap: 24px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+}
+.balance-meta-item .lbl {
+  font-size: 11px;
+  color: var(--navy-300);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.balance-meta-item .val {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.balance-meta-item .val.up { color: var(--green-500); }
+.balance-meta-item .val.down { color: #fca5a5; }
+
+.cashier-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--navy-300);
+  margin-top: 12px;
+  position: relative;
+  letter-spacing: 0.04em;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-400);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+.section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section-row .section-label { margin-bottom: 0; }
+.section-row .link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-600);
+}
+.module-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.module-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 20px 18px;
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+  transition: all 0.2s var(--ease);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  min-height: 120px;
+  position: relative;
+}
+.module-card:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: var(--shadow-md);
+}
+.module-card:disabled { opacity: 0.5; }
+.module-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.module-icon.drawer { background: var(--navy-900); color: white; }
+.module-icon.debit  { background: var(--red-50); color: var(--red-500); }
+.module-icon.credit { background: var(--green-50); color: var(--green-600); }
+.module-icon.txns   { background: var(--gray-100); color: var(--navy-800); }
+.module-icon.reports{ background: #eef2ff; color: #4f46e5; }
+.module-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.module-sub {
+  font-size: 12px;
+  color: var(--navy-400);
+  margin-top: 2px;
+  font-weight: 500;
+}
+.module-badge {
+  position: absolute;
+  top: 14px; right: 14px;
+  background: var(--green-50);
+  color: var(--green-600);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 100px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.module-badge.locked {
+  background: var(--gray-100);
+  color: var(--navy-400);
+}
+
+/* ==========================================================================
+   GENERIC MODULE PAGE
+   ========================================================================== */
+.module-content {
+  flex: 1;
+  padding: 0 20px 24px;
+  overflow-y: auto;
+}
+.module-card-block {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+  margin-bottom: 16px;
+}
+.block-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.005em;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.block-help {
+  font-size: 12px;
+  color: var(--navy-400);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+/* Inputs */
+.field { margin-bottom: 14px; }
+.field:last-child { margin-bottom: 0; }
+.field-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-600);
+  letter-spacing: 0.01em;
+}
+.field-hint {
+  font-size: 11px;
+  color: var(--navy-400);
+  font-weight: 500;
+}
+.field-error {
+  font-size: 12px;
+  color: var(--red-500);
+  font-weight: 500;
+  margin-top: 6px;
+  display: none;
+}
+.field.has-error .field-error { display: block; }
+.field.has-error input,
+.field.has-error select,
+.field.has-error textarea { border-color: var(--red-500); }
+.field input, .field select, .field textarea {
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  background: var(--gray-50);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.15s var(--ease);
+  -webkit-appearance: none;
+}
+.field textarea {
+  height: auto;
+  min-height: 80px;
+  padding: 12px 16px;
+  resize: vertical;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  background: white;
+  border-color: var(--navy-900);
+}
+.field input::placeholder, .field textarea::placeholder { color: var(--navy-300); }
+.field-amount {
+  font-family: var(--font-display);
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+.amount-words {
+  font-size: 12px;
+  color: var(--navy-400);
+  margin-top: 6px;
+  font-style: italic;
+  min-height: 18px;
+}
+
+.suggest-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.suggest-chip {
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--navy-600);
+}
+.suggest-chip:active { background: var(--navy-900); color: white; }
+
+/* Buttons */
+.btn {
+  width: 100%;
+  height: 56px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-primary {
+  background: var(--navy-900);
+  color: white;
+  box-shadow: 0 4px 12px rgba(15,23,42,0.18);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(15,23,42,0.18);
+}
+.btn-primary:disabled, .btn-success:disabled, .btn-danger:disabled {
+  background: var(--gray-200);
+  color: var(--navy-300);
+  box-shadow: none;
+}
+.btn-success {
+  background: var(--green-500);
+  color: white;
+  box-shadow: 0 4px 12px rgba(34,197,94,0.3);
+}
+.btn-success:active:not(:disabled) {
+  background: var(--green-600);
+  transform: translateY(1px);
+}
+.btn-ghost {
+  background: var(--gray-100);
+  color: var(--navy-800);
+}
+.btn-ghost:active { background: var(--gray-200); }
+.btn-danger {
+  background: var(--red-500);
+  color: white;
+}
+.btn-danger:active:not(:disabled) {
+  background: var(--red-600);
+  transform: translateY(1px);
+}
+.btn-row { display: flex; gap: 10px; }
+.btn-row .btn { flex: 1; }
+.btn .spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: none;
+}
+.btn.loading .spinner { display: block; }
+.btn.loading .btn-label { opacity: 0.7; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ==========================================================================
+   DENOMINATION GRID
+   ========================================================================== */
+.denom-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.denom-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 100px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--gray-50);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid transparent;
+  transition: all 0.15s var(--ease);
+}
+.denom-row:focus-within {
+  background: white;
+  border-color: var(--navy-900);
+}
+.denom-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.denom-label .currency { color: var(--navy-400); font-weight: 500; }
+.denom-input {
+  width: 100% !important;
+  height: 40px !important;
+  background: white !important;
+  border: 1.5px solid var(--gray-200) !important;
+  border-radius: 10px !important;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px !important;
+  padding: 0 8px !important;
+}
+.denom-total {
+  text-align: right;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--navy-800);
+}
+.denom-total.zero { color: var(--navy-300); }
+
+.denom-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: var(--navy-900);
+  color: white;
+  border-radius: var(--radius-md);
+}
+.denom-summary.match { background: var(--green-600); }
+.denom-summary.mismatch { background: var(--red-500); }
+.denom-summary .lbl {
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.denom-summary .val {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+.denom-summary .indicator {
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ==========================================================================
+   TRANSACTION LIST
+   ========================================================================== */
+.txn-search {
+  position: relative;
+  margin-bottom: 12px;
+}
+.txn-search input {
+  width: 100%;
+  height: 44px;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 0 16px 0 40px;
+  font-size: 14px;
+}
+.txn-search svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--navy-400);
+}
+.txn-filter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.txn-filter::-webkit-scrollbar { display: none; }
+.filter-chip {
+  padding: 8px 14px;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy-600);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.filter-chip.active {
+  background: var(--navy-900);
+  color: white;
+  border-color: var(--navy-900);
+}
+
+.txn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.txn-item {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--gray-200);
+}
+.txn-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.txn-icon.credit { background: var(--green-50); color: var(--green-600); }
+.txn-icon.debit { background: var(--red-50); color: var(--red-500); }
+.txn-icon.system { background: var(--gray-100); color: var(--navy-800); }
+.txn-info { flex: 1; min-width: 0; }
+.txn-name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.txn-meta {
+  font-size: 11px;
+  color: var(--navy-400);
+  margin-top: 2px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.txn-id {
+  font-family: 'SF Mono', monospace;
+  font-size: 10px;
+  color: var(--navy-300);
+}
+.txn-amount {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.txn-amount.credit { color: var(--green-600); }
+.txn-amount.debit { color: var(--red-500); }
+.txn-amount.system { color: var(--navy-800); }
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--navy-400);
+}
+.empty-state svg { margin-bottom: 12px; opacity: 0.4; }
+.empty-state .title { font-weight: 600; color: var(--navy-600); margin-bottom: 4px; }
+.empty-state .sub { font-size: 13px; }
+
+/* ==========================================================================
+   TOAST
+   ========================================================================== */
+.toast-host {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  width: calc(100% - 32px);
+  max-width: 420px;
+}
+.toast {
+  background: var(--navy-900);
+  color: white;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  animation: toastIn 0.3s var(--ease-out);
+  pointer-events: auto;
+}
+.toast.success { background: var(--green-600); }
+.toast.error { background: var(--red-500); }
+.toast.warn { background: var(--amber-600); }
+.toast.leaving { animation: toastOut 0.25s var(--ease) forwards; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes toastOut {
+  to { opacity: 0; transform: translateY(-12px); }
+}
+
+/* ==========================================================================
+   CONFIRMATION MODAL
+   ========================================================================== */
+.modal-host {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.55);
+  animation: fade 0.2s var(--ease-out);
+}
+.modal-host.show { display: flex; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: white;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 24px 24px 0 0;
+  padding: 24px 20px 20px;
+  animation: modalUp 0.3s var(--ease-out);
+}
+@media (min-width: 481px) {
+  .modal-host { align-items: center; }
+  .modal { border-radius: 24px; margin: 16px; }
+}
+@keyframes modalUp { from { transform: translateY(40px); } to { transform: translateY(0); } }
+.modal-icon {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+}
+.modal-icon.success { background: var(--green-50); color: var(--green-600); }
+.modal-icon.danger { background: var(--red-50); color: var(--red-500); }
+.modal-icon.warn { background: var(--amber-50); color: var(--amber-600); }
+.modal-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.modal-body {
+  font-size: 14px;
+  color: var(--navy-600);
+  text-align: center;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.modal-summary {
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.modal-summary .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.modal-summary .row .l { color: var(--navy-400); }
+.modal-summary .row .r { font-weight: 600; color: var(--navy-900); }
+
+/* ==========================================================================
+   RECEIPT
+   ========================================================================== */
+.receipt {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  margin: 16px 0;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  text-align: center;
+}
+.receipt::before, .receipt::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 12px;
+  background:
+    radial-gradient(circle, var(--gray-100) 6px, transparent 6px) 0 50% / 18px 18px repeat-x;
+}
+.receipt::before { top: -6px; }
+.receipt::after { bottom: -6px; transform: rotate(180deg); }
+.receipt-success-icon {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--green-50);
+  color: var(--green-600);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+  animation: pop 0.5s var(--ease-out);
+}
+@keyframes pop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+.receipt-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+.receipt-amount {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 12px 0 16px;
+}
+.receipt-rows {
+  text-align: left;
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin: 16px 0;
+}
+.receipt-rows .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 13px;
+}
+.receipt-rows .row .l { color: var(--navy-400); }
+.receipt-rows .row .r { font-weight: 600; }
+
+/* ==========================================================================
+   REPORTS
+   ========================================================================== */
+.report-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.report-stat {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+.report-stat .lbl {
+  font-size: 11px;
+  color: var(--navy-400);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.report-stat .val {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 4px;
+  letter-spacing: -0.01em;
+}
+.report-stat .val.up { color: var(--green-600); }
+.report-stat .val.down { color: var(--red-500); }
+
+/* ==========================================================================
+   STATUS PILLS
+   ========================================================================== */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.pill.open { background: var(--green-50); color: var(--green-600); }
+.pill.closed { background: var(--red-50); color: var(--red-500); }
+.pill.locked { background: var(--gray-100); color: var(--navy-400); }
+
+/* ==========================================================================
+   ADDITIONS (no design changes — reuses existing tokens)
+   ========================================================================== */
+/* Make transaction rows feel tappable — same look, just cursor + active feedback */
+.txn-item { cursor: pointer; transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease); }
+.txn-item:active { transform: scale(0.99); box-shadow: var(--shadow-md); }
+
+/* Style new <select> to match existing .field inputs (uses same tokens) */
+.field select {
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  background: var(--gray-50);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--navy-900);
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+}
+.field select:focus { background-color: white; border-color: var(--navy-900); }
+
+/* Read-only denom rows inside the txn-detail modal — no input column */
+#txn-detail-denom-grid .denom-row {
+  grid-template-columns: 80px 1fr 100px;
+}
+
+/* ==========================================================================
+   KEYBOARD / DESKTOP ACCESSIBILITY ADDITIONS
+   - Visible focus rings for keyboard users (mouse users still see clean buttons)
+   - Skip-to-main-content link for screen reader / keyboard users
+   - inert attribute support for non-active screens
+   ========================================================================== */
+
+/* Reset default outlines and replace with focus-visible only (mouse clicks stay clean) */
+*:focus { outline: none; }
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--navy-900);
+  outline-offset: 2px;
+}
+.btn:focus-visible {
+  outline: 2px solid var(--navy-900);
+  outline-offset: 3px;
+}
+.btn-danger:focus-visible {
+  outline-color: var(--red-500);
+}
+.btn-primary:focus-visible {
+  outline-color: var(--navy-900);
+}
+.pin-key:focus-visible {
+  outline: 2px solid var(--navy-900);
+  outline-offset: 2px;
+}
+.txn-item:focus-visible {
+  outline: 2px solid var(--navy-900);
+  outline-offset: 2px;
+}
+.module-card:focus-visible,
+.filter-chip:focus-visible {
+  outline: 2px solid var(--navy-900);
+  outline-offset: 2px;
+}
+.field input:focus-visible {
+  /* Field already changes background+border on :focus; just add a clearer ring. */
+  outline: 2px solid var(--navy-900);
+  outline-offset: 2px;
+}
+
+/* Skip-to-main-content link — invisible until focused via Tab */
+.skip-link {
+  position: fixed;
+  top: -40px;
+  left: 12px;
+  z-index: 10000;
+  padding: 10px 16px;
+  background: var(--navy-900);
+  color: white;
+  border-radius: var(--radius-sm, 8px);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  transition: top 0.2s var(--ease);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: 12px;
+  outline: 2px solid var(--navy-900);
+  outline-offset: 2px;
+}
+
+/* Inert attribute polyfill-style — hidden screens shouldn't be tab-reachable */
+[inert] {
+  pointer-events: none;
+  cursor: default;
+}
+[inert], [inert] * {
+  user-select: none;
+}
+
+/* Hover affordances on desktop — subtle, tokens only, no new colors */
+@media (hover: hover) and (pointer: fine) {
+  .module-card:hover:not(:disabled) { box-shadow: var(--shadow-md); }
+  .txn-item:hover { background: var(--gray-50); }
+  .filter-chip:hover:not(.active) { background: var(--gray-100); }
+}
+
+/* Keyboard hint badge — used by ?-shortcut help (existing modal tokens) */
+.kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--gray-200);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--gray-50);
+  font-family: var(--font-display, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-700, var(--navy-900));
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   DESKTOP RESPONSIVE LAYOUT
+   --------------------------------------------------------------------------
+   All overrides are scoped inside @media min-width: 768px / 1024px / 1280px
+   so the mobile experience under 768px remains identical.
+   Zero changes to mobile layout.
+   ========================================================================== */
+
+/* --- Tablet and up (768px+) --- */
+@media (min-width: 768px) {
+  /* Widen the app container — replaces the 480px phone-frame look */
+  .app {
+    max-width: 960px;
+    border-radius: 24px;
+  }
+  body {
+    padding: 24px 16px;
+  }
+
+  /* Dashboard: side-by-side balance card and modules grid */
+  .dash-content {
+    padding: 0 32px 40px;
+  }
+  .module-content {
+    padding: 0 32px 32px;
+  }
+
+  /* Module grid: 3 columns instead of 2 */
+  .module-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  /* Balance card sits more comfortably with extra padding */
+  .balance-card {
+    padding: 32px;
+  }
+
+  /* Transaction list: more breathing room and table-like alignment */
+  .txn-list {
+    gap: 6px;
+  }
+  .txn-item {
+    padding: 16px 20px;
+    gap: 16px;
+  }
+  .txn-info { flex: 1; min-width: 0; }
+  .txn-name { font-size: 15px; }
+  .txn-meta { font-size: 13px; }
+  .txn-amount { font-size: 16px; }
+
+  /* Modal: cap width so it doesn't span the whole desktop screen */
+  .modal {
+    max-width: 560px;
+    width: 100%;
+    margin: 16px auto;
+  }
+
+  /* Swap modal: REMOVE and ADD side-by-side */
+  #swap-modal {
+    max-width: 880px;
+  }
+  #swap-modal .denom-grid {
+    margin-bottom: 6px;
+  }
+  /* Wrap the two swap sections (REMOVE + ADD) into a 2-col grid on desktop.
+     We achieve this without adding new HTML by using subgrid-style flow:
+     the existing block-title + denom-grid + denom-summary triplets sit
+     in source order, so we layout them via CSS-grid columns. */
+  #swap-modal {
+    display: flex;
+    flex-direction: column;
+  }
+  /* Find the two swap halves by id — keep them side by side */
+  #swap-modal-grid-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* Form fields: don't make them ridiculously wide on desktop */
+  .field {
+    max-width: 720px;
+  }
+  .field-amount {
+    max-width: 480px;
+  }
+
+  /* Header padding scales up */
+  .app-header {
+    padding: 20px 32px;
+  }
+}
+
+/* --- Small desktop (1024px+) --- */
+@media (min-width: 1024px) {
+  .app {
+    max-width: 1100px;
+  }
+
+  /* Dashboard becomes a 2-col split: balance card on the left,
+     module grid on the right. Any other direct child of .dash-content
+     (e.g. .section-row "Operations" label) spans both columns by default. */
+  .dash-content {
+    display: grid;
+    grid-template-columns: minmax(320px, 380px) 1fr;
+    gap: 28px;
+    align-items: start;
+    padding: 0 40px 40px;
+  }
+  .dash-content > * {
+    grid-column: 1 / -1;     /* default: span both columns */
+  }
+  .dash-content > .balance-card {
+    margin-bottom: 0;
+    grid-column: 1;
+    grid-row: 1 / span 3;    /* sticks to the left, stretches alongside */
+    position: sticky;
+    top: 16px;
+  }
+  .dash-content > .section-row {
+    grid-column: 2;          /* "Operations" label sits above the modules */
+    margin: 0;
+  }
+  .dash-content > .module-grid {
+    grid-column: 2;
+    margin-bottom: 0;
+    align-self: start;
+  }
+
+  /* Drawer screen — keep single-column flow but allow it to breathe wider.
+     Two-column splits would need new HTML wrappers; we don't add those here. */
+  #screen-drawer .module-content {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  /* Credit / Debit screens — center the form column on big screens. */
+  #screen-credit .module-content,
+  #screen-debit .module-content {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  /* Reports screen — wider single-column. */
+  #screen-reports .module-content {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* Hover states: lift + shadow on actionable cards. */
+  .module-card:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--navy-300, var(--gray-200));
+  }
+  .btn:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+  .btn:not(:disabled):active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+  }
+  .txn-item:hover {
+    transform: translateX(2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* --- Wide desktop (1280px+) --- */
+@media (min-width: 1280px) {
+  .app {
+    max-width: 1200px;
+  }
+  .dash-content,
+  #screen-drawer .module-content,
+  #screen-credit .module-content,
+  #screen-debit .module-content,
+  #screen-reports .module-content {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
+</style>
+</head>
+<body>
+<a href="#app" class="skip-link" id="skip-link">Skip to main content</a>
+<div class="app" id="app">
+
+  <div class="sync-banner" id="sync-banner">⚠ Working offline — changes saved locally</div>
+  <div class="toast-host" id="toast-host"></div>
+
+  <!-- ======================================================================
+       SPLASH
+       ====================================================================== -->
+  <section class="screen active" id="splash" role="button" tabindex="0" aria-label="Tap to continue">
+    <div class="splash-glow"></div>
+    <div class="splash-content">
+      <div class="splash-brand">Branch Teller</div>
+      <div class="drawer-anim" aria-hidden="true">
+        <div class="drawer-body"></div>
+        <div class="drawer-front"></div>
+        <div class="drawer-cash"></div>
+        <div class="drawer-cash c2"></div>
+        <div class="drawer-cash c3"></div>
+      </div>
+      <div>
+        <h1 class="splash-title">Cash Drawer</h1>
+        <p class="splash-subtitle">Secure teller operations</p>
+      </div>
+      <div class="splash-skip">Tap anywhere to continue</div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       SETUP PIN (first-run)
+       ====================================================================== -->
+  <section class="screen" id="setup-pin-screen">
+    <div class="pin-header">
+      <div class="pin-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <h2 class="pin-title" id="setup-pin-title">Create your 4-digit PIN</h2>
+      <p class="pin-hint" id="setup-pin-hint">This PIN unlocks the cash drawer. Don't share it.</p>
+    </div>
+
+    <div class="pin-dots" id="setup-pin-dots">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+
+    <div class="pin-error" id="setup-pin-error">&nbsp;</div>
+
+    <div class="pin-pad" id="setup-pin-pad">
+      <button class="pin-key" data-d="1">1</button>
+      <button class="pin-key" data-d="2">2</button>
+      <button class="pin-key" data-d="3">3</button>
+      <button class="pin-key" data-d="4">4</button>
+      <button class="pin-key" data-d="5">5</button>
+      <button class="pin-key" data-d="6">6</button>
+      <button class="pin-key" data-d="7">7</button>
+      <button class="pin-key" data-d="8">8</button>
+      <button class="pin-key" data-d="9">9</button>
+      <button class="pin-key action" data-action="clear">Clear</button>
+      <button class="pin-key" data-d="0">0</button>
+      <button class="pin-key action" data-action="del">⌫</button>
+    </div>
+
+    <div class="pin-info">
+      <span>Step <span id="setup-step">1</span> of 2</span>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       PIN LOCK (returning)
+       ====================================================================== -->
+  <section class="screen" id="pin-screen">
+    <div class="pin-header">
+      <div class="pin-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <h2 class="pin-title">Enter your PIN</h2>
+      <p class="pin-hint">Welcome back, <span id="pin-cashier-name">Teller</span></p>
+    </div>
+
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+
+    <div class="pin-error" id="pin-error">&nbsp;</div>
+
+    <div class="pin-pad" id="pin-pad">
+      <button class="pin-key" data-d="1">1</button>
+      <button class="pin-key" data-d="2">2</button>
+      <button class="pin-key" data-d="3">3</button>
+      <button class="pin-key" data-d="4">4</button>
+      <button class="pin-key" data-d="5">5</button>
+      <button class="pin-key" data-d="6">6</button>
+      <button class="pin-key" data-d="7">7</button>
+      <button class="pin-key" data-d="8">8</button>
+      <button class="pin-key" data-d="9">9</button>
+      <button class="pin-key action" data-action="reset">Reset</button>
+      <button class="pin-key" data-d="0">0</button>
+      <button class="pin-key action" data-action="del">⌫</button>
+    </div>
+
+    <div class="pin-info">
+      <span id="pin-attempts-info">3 attempts remaining</span>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       DASHBOARD
+       ====================================================================== -->
+  <section class="screen" id="dashboard">
+    <header class="app-header">
+      <div class="header-greeting">
+        <span class="small" id="greeting-time">Good morning</span>
+        <span class="big" id="greeting-name">Teller</span>
+      </div>
+      <button class="avatar" id="avatar-btn" aria-label="Profile" title="Lock app">
+        <span id="avatar-initials">T</span>
+      </button>
+    </header>
+
+    <div class="dash-content">
+      <div class="balance-card">
+        <div class="balance-label">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-label">Drawer status</span>
+        </div>
+        <div class="balance-amount">
+          <span class="currency">₹</span><span id="balance-display">0</span>
+        </div>
+        <div class="balance-meta">
+          <div class="balance-meta-item">
+            <div class="lbl">Credits today</div>
+            <div class="val up">+₹<span id="credits-today">0</span></div>
+          </div>
+          <div class="balance-meta-item">
+            <div class="lbl">Debits today</div>
+            <div class="val down">−₹<span id="debits-today">0</span></div>
+          </div>
+        </div>
+        <div class="cashier-line">
+          <span id="cashier-id">CASHIER</span> · <span id="day-label">No active day</span>
+        </div>
+      </div>
+
+      <div class="section-row">
+        <div class="section-label">Operations</div>
+        <button class="link" id="day-action-btn">Manage Day</button>
+      </div>
+
+      <div class="module-grid">
+        <button class="module-card" data-go="drawer">
+          <span class="module-icon drawer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 14h2"/></svg>
+          </span>
+          <div>
+            <div class="module-name">Drawer</div>
+            <div class="module-sub" id="drawer-sub">Open / Close</div>
+          </div>
+          <span class="module-badge" id="drawer-badge">Closed</span>
+        </button>
+
+        <button class="module-card" data-go="credit">
+          <span class="module-icon credit">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12l7-7 7 7"/></svg>
+          </span>
+          <div>
+            <div class="module-name">Credit</div>
+            <div class="module-sub">Deposit / Cash in</div>
+          </div>
+        </button>
+
+        <button class="module-card" data-go="debit">
+          <span class="module-icon debit">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7 7 7-7"/></svg>
+          </span>
+          <div>
+            <div class="module-name">Debit</div>
+            <div class="module-sub">Withdraw / Pay out</div>
+          </div>
+        </button>
+
+        <button class="module-card" data-go="txns">
+          <span class="module-icon txns">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/></svg>
+          </span>
+          <div>
+            <div class="module-name">Transactions</div>
+            <div class="module-sub" id="txn-count-sub">0 today</div>
+          </div>
+        </button>
+
+        <button class="module-card" data-go="reports">
+          <span class="module-icon reports">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
+          </span>
+          <div>
+            <div class="module-name">Reports</div>
+            <div class="module-sub">Daily summary</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       DRAWER (Open / Close Day)
+       ====================================================================== -->
+  <section class="screen" id="screen-drawer">
+    <header class="app-header with-back">
+      <button class="header-back" data-back aria-label="Back">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="header-title">Cash Drawer</span>
+      <span style="width:40px"></span>
+    </header>
+
+    <div class="module-content">
+      <div class="module-card-block">
+        <div class="block-title">
+          <span>Status</span>
+          <span class="pill" id="drawer-pill">Closed</span>
+        </div>
+        <div class="block-help" id="drawer-help">
+          Open the day with your starting denominations. Once open, you can take credits and debits.
+        </div>
+        <div class="report-summary">
+          <div class="report-stat">
+            <div class="lbl">Current balance</div>
+            <div class="val">₹<span id="drawer-balance">0</span></div>
+          </div>
+          <div class="report-stat">
+            <div class="lbl">Day started</div>
+            <div class="val" style="font-size:14px" id="drawer-opened-at">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPEN DAY: opening denomination -->
+      <div class="module-card-block" id="open-day-block">
+        <div class="block-title">Opening Float</div>
+        <div class="block-help">Count notes you start with. Total auto-calculates.</div>
+        <div class="denom-grid" id="open-denom-grid"></div>
+        <div class="denom-summary" id="open-denom-summary">
+          <div>
+            <div class="lbl">Opening balance</div>
+            <div class="val">₹<span id="open-denom-total">0</span></div>
+          </div>
+          <div class="indicator" id="open-denom-indicator">Ready</div>
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn btn-primary" id="btn-open-day">
+            <span class="btn-label">Open Day</span>
+            <span class="spinner"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- CLOSE DAY: closing denomination -->
+      <div class="module-card-block" id="close-day-block" style="display:none">
+        <div class="block-title">Close Day</div>
+        <div class="block-help">Count physical cash in drawer. App will compare against expected balance.</div>
+        <div class="denom-grid" id="close-denom-grid"></div>
+        <div class="denom-summary" id="close-denom-summary">
+          <div>
+            <div class="lbl">Counted</div>
+            <div class="val">₹<span id="close-denom-total">0</span></div>
+          </div>
+          <div class="indicator" id="close-denom-indicator">Counting…</div>
+        </div>
+        <div class="module-card-block" style="margin: 14px 0 0; padding: 14px; background: var(--gray-50); border:none; box-shadow:none;">
+          <div class="row" style="display:flex; justify-content:space-between; font-size:13px; padding:3px 0;">
+            <span style="color:var(--navy-400)">Expected (system)</span>
+            <span style="font-weight:700">₹<span id="close-expected">0</span></span>
+          </div>
+          <div class="row" style="display:flex; justify-content:space-between; font-size:13px; padding:3px 0;">
+            <span style="color:var(--navy-400)">Counted (physical)</span>
+            <span style="font-weight:700">₹<span id="close-counted">0</span></span>
+          </div>
+          <div class="row" style="display:flex; justify-content:space-between; font-size:14px; padding:6px 0 0; border-top:1px solid var(--gray-200); margin-top:6px;">
+            <span style="font-weight:600">Variance</span>
+            <span id="close-variance" style="font-weight:800; font-family:var(--font-display);">₹0</span>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:14px">
+          <button class="btn btn-ghost" id="btn-cancel-close">Cancel</button>
+          <button class="btn btn-danger" id="btn-close-day">
+            <span class="btn-label">Close Day</span>
+            <span class="spinner"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Swap / Exchange — only visible when drawer is open with balance -->
+      <div class="module-card-block" id="swap-trigger" style="display:none">
+        <div class="block-title">Swap / Exchange Notes</div>
+        <div class="block-help">Exchange notes already in the drawer for an equivalent value of different denominations. Total going out must equal total coming in.</div>
+        <button class="btn btn-ghost" id="btn-show-swap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/></svg>
+          <span>New Swap</span>
+        </button>
+      </div>
+
+      <div class="module-card-block" id="close-day-trigger" style="display:none">
+        <button class="btn btn-danger" id="btn-show-close">End of Day → Close Drawer</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       CREDIT (Cash In)
+       ====================================================================== -->
+  <section class="screen" id="screen-credit">
+    <header class="app-header with-back">
+      <button class="header-back" data-back aria-label="Back">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="header-title">Credit · Cash In</span>
+      <span style="width:40px"></span>
+    </header>
+
+    <div class="module-content">
+      <div class="module-card-block">
+        <div class="block-title">Customer details</div>
+        <div class="field" id="f-credit-name">
+          <div class="field-label-row"><label for="credit-name">Customer name</label><span class="field-hint">Required</span></div>
+          <input type="text" id="credit-name" maxlength="60" placeholder="Full name" autocomplete="off" />
+          <div class="field-error">Enter a valid customer name (min. 2 letters).</div>
+        </div>
+        <div class="field" id="f-credit-acct">
+          <div class="field-label-row"><label for="credit-acct">Account number</label><span class="field-hint">9–18 digits</span></div>
+          <input type="tel" id="credit-acct" maxlength="18" placeholder="Account number" inputmode="numeric" />
+          <div class="field-error">Account number must be 9 to 18 digits.</div>
+        </div>
+        <div class="field" id="f-credit-amount">
+          <div class="field-label-row"><label for="credit-amount">Amount</label><span class="field-hint">Whole rupees</span></div>
+          <input type="tel" id="credit-amount" class="field-amount" inputmode="numeric" placeholder="0" maxlength="10" />
+          <div class="amount-words" id="credit-amount-words"></div>
+          <div class="field-error">Amount must be greater than 0.</div>
+          <div class="suggest-chips">
+            <button class="suggest-chip" data-amt="500">+500</button>
+            <button class="suggest-chip" data-amt="1000">+1,000</button>
+            <button class="suggest-chip" data-amt="5000">+5,000</button>
+            <button class="suggest-chip" data-amt="10000">+10,000</button>
+            <button class="suggest-chip" data-amt="0">Clear</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label-row"><label for="credit-note">Remarks (optional)</label></div>
+          <textarea id="credit-note" maxlength="200" placeholder="e.g. Cash deposit by customer"></textarea>
+        </div>
+      </div>
+
+      <div class="module-card-block">
+        <div class="block-title">Denomination breakdown</div>
+        <div class="block-help">Notes received from customer. Total must match the amount above.</div>
+        <div class="denom-grid" id="credit-denom-grid"></div>
+        <div class="denom-summary" id="credit-denom-summary">
+          <div>
+            <div class="lbl">Counted</div>
+            <div class="val">₹<span id="credit-denom-total">0</span></div>
+          </div>
+          <div class="indicator" id="credit-denom-indicator">Enter notes</div>
+        </div>
+      </div>
+
+      <button class="btn btn-success" id="btn-credit-submit" disabled>
+        <span class="btn-label">Confirm Credit</span>
+        <span class="spinner"></span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       DEBIT (Cash Out)
+       ====================================================================== -->
+  <section class="screen" id="screen-debit">
+    <header class="app-header with-back">
+      <button class="header-back" data-back aria-label="Back">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="header-title">Debit · Cash Out</span>
+      <span style="width:40px"></span>
+    </header>
+
+    <div class="module-content">
+      <div class="module-card-block">
+        <div class="block-title">Customer details</div>
+        <div class="field" id="f-debit-name">
+          <div class="field-label-row"><label for="debit-name">Customer name</label><span class="field-hint">Required</span></div>
+          <input type="text" id="debit-name" maxlength="60" placeholder="Full name" autocomplete="off" />
+          <div class="field-error">Enter a valid customer name (min. 2 letters).</div>
+        </div>
+        <div class="field" id="f-debit-acct">
+          <div class="field-label-row"><label for="debit-acct">Account number</label><span class="field-hint">9–18 digits</span></div>
+          <input type="tel" id="debit-acct" maxlength="18" placeholder="Account number" inputmode="numeric" />
+          <div class="field-error">Account number must be 9 to 18 digits.</div>
+        </div>
+        <div class="field" id="f-debit-amount">
+          <div class="field-label-row">
+            <label for="debit-amount">Amount</label>
+            <span class="field-hint">Available: ₹<span id="debit-available">0</span></span>
+          </div>
+          <input type="tel" id="debit-amount" class="field-amount" inputmode="numeric" placeholder="0" maxlength="10" />
+          <div class="amount-words" id="debit-amount-words"></div>
+          <div class="field-error">Amount must be greater than 0 and not exceed drawer balance.</div>
+          <div class="suggest-chips">
+            <button class="suggest-chip" data-amt="500">+500</button>
+            <button class="suggest-chip" data-amt="1000">+1,000</button>
+            <button class="suggest-chip" data-amt="5000">+5,000</button>
+            <button class="suggest-chip" data-amt="10000">+10,000</button>
+            <button class="suggest-chip" data-amt="0">Clear</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label-row"><label for="debit-note">Remarks (optional)</label></div>
+          <textarea id="debit-note" maxlength="200" placeholder="e.g. Cash withdrawal"></textarea>
+        </div>
+      </div>
+
+      <div class="module-card-block">
+        <div class="block-title">Denomination paid out</div>
+        <div class="block-help">Notes you give to the customer. You cannot pay more of a denomination than the drawer holds.</div>
+        <div class="denom-grid" id="debit-denom-grid"></div>
+        <div class="denom-summary" id="debit-denom-summary">
+          <div>
+            <div class="lbl">To pay out</div>
+            <div class="val">₹<span id="debit-denom-total">0</span></div>
+          </div>
+          <div class="indicator" id="debit-denom-indicator">Enter notes</div>
+        </div>
+      </div>
+
+      <button class="btn btn-danger" id="btn-debit-submit" disabled>
+        <span class="btn-label">Confirm Debit</span>
+        <span class="spinner"></span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       TRANSACTIONS
+       ====================================================================== -->
+  <section class="screen" id="screen-txns">
+    <header class="app-header with-back">
+      <button class="header-back" data-back aria-label="Back">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="header-title">Transactions</span>
+      <span style="width:40px"></span>
+    </header>
+
+    <div class="module-content">
+      <div class="txn-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="txn-search" placeholder="Search by name, account, ID, amount" autocomplete="off" />
+      </div>
+      <div class="txn-filter" id="txn-filter">
+        <button class="filter-chip active" data-f="all">All</button>
+        <button class="filter-chip" data-f="credit">Credits</button>
+        <button class="filter-chip" data-f="debit">Debits</button>
+        <button class="filter-chip" data-f="today">Today</button>
+        <button class="filter-chip" data-f="system">System</button>
+      </div>
+      <div class="txn-list" id="txn-list"></div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       REPORTS
+       ====================================================================== -->
+  <section class="screen" id="screen-reports">
+    <header class="app-header with-back">
+      <button class="header-back" data-back aria-label="Back">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      </button>
+      <span class="header-title">Reports</span>
+      <span style="width:40px"></span>
+    </header>
+
+    <div class="module-content">
+      <div class="module-card-block">
+        <div class="block-title">Today's summary</div>
+        <div class="report-summary">
+          <div class="report-stat">
+            <div class="lbl">Opening</div>
+            <div class="val">₹<span id="rep-opening">0</span></div>
+          </div>
+          <div class="report-stat">
+            <div class="lbl">Closing / Current</div>
+            <div class="val">₹<span id="rep-closing">0</span></div>
+          </div>
+          <div class="report-stat">
+            <div class="lbl">Total Credits</div>
+            <div class="val up">+₹<span id="rep-credit-total">0</span></div>
+          </div>
+          <div class="report-stat">
+            <div class="lbl">Total Debits</div>
+            <div class="val down">−₹<span id="rep-debit-total">0</span></div>
+          </div>
+          <div class="report-stat">
+            <div class="lbl">Credit count</div>
+            <div class="val" id="rep-credit-count">0</div>
+          </div>
+          <div class="report-stat">
+            <div class="lbl">Debit count</div>
+            <div class="val" id="rep-debit-count">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="module-card-block">
+        <div class="block-title">Current denomination breakdown</div>
+        <div class="block-help">Live count of notes in drawer based on transactions.</div>
+        <div class="denom-grid" id="report-denom-grid"></div>
+      </div>
+
+      <!-- Exchange Notes: navigates to the drawer-level Swap modal so the read-only
+           reports screen stays read-only. -->
+      <div class="module-card-block" id="reports-swap-block" style="display:none">
+        <div class="block-title">Exchange Notes</div>
+        <div class="block-help">Swap notes already in the drawer for an equivalent value of different denominations. Total going out must equal total coming in.</div>
+        <button class="btn btn-ghost" id="btn-reports-swap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/></svg>
+          <span>Open Exchange Notes</span>
+        </button>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="btn-export">Export CSV</button>
+        <button class="btn btn-primary" id="btn-print">Print</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       TRANSACTION DETAIL MODAL (read-only details)
+       ====================================================================== -->
+  <div class="modal-host" id="txn-detail-host" role="dialog" aria-modal="true">
+    <div class="modal" id="txn-detail-modal">
+      <div class="modal-icon" id="txn-detail-icon"></div>
+      <div class="modal-title" id="txn-detail-title">Transaction</div>
+      <div class="modal-body" id="txn-detail-subtitle"></div>
+      <div class="modal-summary" id="txn-detail-summary"></div>
+      <div class="block-title" id="txn-detail-denom-title" style="margin-top:8px; display:none;">Denomination breakdown</div>
+      <div class="denom-grid" id="txn-detail-denom-grid" style="display:none;"></div>
+      <div class="modal-summary" id="txn-detail-denom-total" style="display:none; margin-top:10px;"></div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn btn-primary" id="txn-detail-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       SWAP / EXCHANGE MODAL — drawer-level
+       Two sections: REMOVE (out) and ADD (in). Totals must match.
+       Only mutates drawer denom counts; logs as type='swap' transaction.
+       ====================================================================== -->
+  <div class="modal-host" id="swap-host" role="dialog" aria-modal="true">
+    <div class="modal" id="swap-modal">
+      <div class="modal-icon warn" id="swap-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/></svg>
+      </div>
+      <div class="modal-title">Swap / Exchange Notes</div>
+      <div class="modal-body">Take notes out of the drawer and put equivalent value back in. Total Out must equal Total In.</div>
+
+      <div id="swap-modal-grid-wrapper">
+
+      <!-- REMOVE section: notes leaving the drawer -->
+      <div class="swap-half" id="swap-half-remove">
+      <div class="block-title" style="margin-top:14px">
+        <span>1. Remove from drawer</span>
+        <span class="field-hint">Notes going OUT</span>
+      </div>
+      <div class="block-help">Cannot remove more than what's currently in the drawer.</div>
+      <div class="denom-grid" id="swap-out-grid"></div>
+      <div class="denom-summary" id="swap-out-summary">
+        <div>
+          <div class="lbl">Total Out</div>
+          <div class="val">₹<span id="swap-out-total">0</span></div>
+        </div>
+        <div class="indicator" id="swap-out-indicator">Enter notes</div>
+      </div>
+      </div>
+
+      <!-- ADD section: notes coming back in -->
+      <div class="swap-half" id="swap-half-add">
+      <div class="block-title" style="margin-top:18px">
+        <span>2. Add to drawer</span>
+        <span class="field-hint">Notes coming IN</span>
+      </div>
+      <div class="block-help">Equivalent value in different denominations.</div>
+      <div class="denom-grid" id="swap-in-grid"></div>
+      <div class="denom-summary" id="swap-in-summary">
+        <div>
+          <div class="lbl">Total In</div>
+          <div class="val">₹<span id="swap-in-total">0</span></div>
+        </div>
+        <div class="indicator" id="swap-in-indicator">Enter notes</div>
+      </div>
+      </div>
+
+      </div>
+
+      <!-- Comparison summary -->
+      <div class="modal-summary" id="swap-compare" style="display:block; margin-top:14px;">
+        <div class="row"><span class="l">Total Out</span><span class="r" id="swap-cmp-out">₹0</span></div>
+        <div class="row"><span class="l">Total In</span><span class="r" id="swap-cmp-in">₹0</span></div>
+        <div class="row"><span class="l" id="swap-cmp-diff-label">Difference</span><span class="r" id="swap-cmp-diff">₹0</span></div>
+      </div>
+
+      <div class="field-error" id="swap-global-error" style="display:none; margin-top:10px;"></div>
+
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-ghost" id="swap-reset">Reset</button>
+        <button class="btn btn-ghost" id="swap-cancel">Cancel</button>
+      </div>
+      <div style="margin-top:10px">
+        <button class="btn btn-primary" id="swap-confirm" disabled>
+          <span class="btn-label">Confirm Swap</span>
+          <span class="spinner"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL
+       ====================================================================== -->
+  <div class="modal-host" id="modal-host" role="dialog" aria-modal="true">
+    <div class="modal" id="modal">
+      <div class="modal-icon" id="modal-icon"></div>
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-summary" id="modal-summary" style="display:none"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
+        <button class="btn btn-primary" id="modal-confirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+/* ============================================================================
+   CONSTANTS
+   ============================================================================ */
+const STORAGE_KEY = 'cashDrawerV2';
+const PIN_KEY = 'cashDrawerPin';
+const DENOMINATIONS = [2000, 500, 200, 100, 50, 20, 10, 5, 2, 1]; // INR notes/coins
+const MAX_PIN_ATTEMPTS = 5;
+const LOCKOUT_SECONDS = 30;
+const SUBMIT_COOLDOWN_MS = 800; // small UX cooldown after a successful action
+const MAX_TXN_AMOUNT = 99999999; // 9.99 crore safety cap (well below Number.MAX_SAFE_INTEGER)
+const MAX_DRAWER_BALANCE = 999999999; // hard ceiling for drawer total
+const MAX_NOTES_PER_DENOM = 999999; // single denomination input cap
+const STATE_VERSION = 3;
+const TXN_HISTORY_CAP = 5000;
+
+/* ============================================================================
+   STATE
+   ============================================================================ */
+let state = createDefaultState();
+let pinBuffer = '';
+let setupPinFirst = '';
+let setupStep = 1;
+let activeScreen = 'splash';
+let txnFilter = 'all';
+let txnQuery = '';
+let lastSubmitTime = 0;
+let creditDenoms = createEmptyDenoms();
+let debitDenoms = createEmptyDenoms();
+let openDenoms = createEmptyDenoms();
+let closeDenoms = createEmptyDenoms();
+let confirmCallback = null;
+let modalBusy = false;        // prevents double-click on modal confirm
+let lockoutTickHandle = null; // periodic lockout-label refresh
+
+function createDefaultState() {
+  return {
+    version: STATE_VERSION,
+    cashier: { name: 'Teller', id: 'T-001', initials: 'T' },
+    drawer: {
+      status: 'closed',           // 'closed' | 'open'
+      balance: 0,                 // integer rupees
+      denoms: createEmptyDenoms(),
+      openedAt: null,
+      closedAt: null,
+      openingBalance: 0,          // preserved across close for last-day reports
+      lastClosedAt: null,
+      lastClosingBalance: 0,
+    },
+    transactions: [],             // newest first
+    pin: { attempts: 0, lockoutUntil: 0 },
+  };
+}
+
+function createEmptyDenoms() {
+  const o = {};
+  for (const d of DENOMINATIONS) o[d] = 0;
+  return o;
+}
+
+/* ============================================================================
+   PERSISTENCE — safe load/save with corruption handling
+   ============================================================================ */
+function safeLoad() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch (e) {
+    console.warn('State corrupted, resetting.', e);
+    // Don't auto-wipe; keep a backup so a tech can recover it.
+    try {
+      localStorage.setItem(STORAGE_KEY + '.corrupt.' + Date.now(),
+        localStorage.getItem(STORAGE_KEY) || '');
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (_) {}
+    return null;
+  }
+}
+
+function safeSave() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('Save failed:', e);
+    showToast('Could not save data — storage may be full', 'error');
+  }
+}
+
+/**
+ * Validate one transaction record. Returns sanitized copy or null if invalid.
+ */
+function sanitizeTxn(t) {
+  if (!t || typeof t !== 'object') return null;
+  const type = t.type;
+  if (type !== 'credit' && type !== 'debit' && type !== 'system' && type !== 'swap') return null;
+  const amount = toInt(t.amount);
+  const ts = Number(t.timestamp);
+  if (!Number.isFinite(ts) || ts <= 0) return null;
+  const denoms = createEmptyDenoms();
+  if (t.denoms && typeof t.denoms === 'object') {
+    for (const d of DENOMINATIONS) denoms[d] = toInt(t.denoms[d]);
+  }
+  // For swap transactions, preserve the canonical remove/add maps.
+  // We only keep entries for valid denominations and clean any non-integer/zero junk.
+  function pickDenomMap(src) {
+    if (!src || typeof src !== 'object') return undefined;
+    const out = {};
+    for (const d of DENOMINATIONS) {
+      const n = toInt(src[d]);
+      if (n > 0) out[d] = n;
+    }
+    return Object.keys(out).length ? out : undefined;
+  }
+  const remove = type === 'swap' ? pickDenomMap(t.remove) : undefined;
+  const add    = type === 'swap' ? pickDenomMap(t.add)    : undefined;
+  // Round-trip drawerSnapshot if present (audit payload — sanitize defensively).
+  let drawerSnapshot;
+  if (t.drawerSnapshot && typeof t.drawerSnapshot === 'object') {
+    const ds = t.drawerSnapshot;
+    const snapDenoms = pickDenomMap(ds.denoms);
+    drawerSnapshot = {
+      status: ds.status === 'open' ? 'open' : 'closed',
+      balance: toInt(ds.balance),
+      ...(snapDenoms ? { denoms: snapDenoms } : { denoms: {} }),
+    };
+  }
+  return {
+    id: typeof t.id === 'string' && t.id ? t.id : ('TXN-' + ts.toString(36).toUpperCase()),
+    timestamp: ts,
+    type,
+    subtype: typeof t.subtype === 'string' ? t.subtype : '',
+    amount,
+    customer: typeof t.customer === 'string' ? t.customer.slice(0, 80) : '',
+    account: typeof t.account === 'string' ? t.account.replace(/\D/g, '').slice(0, 18) : '',
+    note: typeof t.note === 'string' ? t.note.slice(0, 300) : '',
+    label: typeof t.label === 'string' ? t.label.slice(0, 80) : '',
+    cashierId: typeof t.cashierId === 'string' ? t.cashierId : '',
+    denoms,
+    ...(remove !== undefined ? { remove } : {}),
+    ...(add    !== undefined ? { add    } : {}),
+    ...(drawerSnapshot ? { drawerSnapshot } : {}),
+    meta: (t.meta && typeof t.meta === 'object') ? t.meta : undefined,
+  };
+}
+
+function migrate(loaded) {
+  if (!loaded) return createDefaultState();
+  const def = createDefaultState();
+
+  // Defensive merge — never trust shape from disk.
+  const cashier = { ...def.cashier, ...(loaded.cashier && typeof loaded.cashier === 'object' ? loaded.cashier : {}) };
+  const loadedDrawer = (loaded.drawer && typeof loaded.drawer === 'object') ? loaded.drawer : {};
+  const loadedDenoms = (loadedDrawer.denoms && typeof loadedDrawer.denoms === 'object') ? loadedDrawer.denoms : {};
+  const drawer = {
+    ...def.drawer,
+    ...loadedDrawer,
+    denoms: { ...def.drawer.denoms },
+  };
+  for (const d of DENOMINATIONS) drawer.denoms[d] = toInt(loadedDenoms[d]);
+  drawer.status = drawer.status === 'open' ? 'open' : 'closed';
+  drawer.balance = toInt(drawer.balance);
+  drawer.openingBalance = toInt(drawer.openingBalance);
+  drawer.lastClosingBalance = toInt(drawer.lastClosingBalance);
+  drawer.openedAt = Number(drawer.openedAt) || null;
+  drawer.closedAt = Number(drawer.closedAt) || null;
+  drawer.lastClosedAt = Number(drawer.lastClosedAt) || null;
+
+  // Sanitize transactions.
+  const rawTxns = Array.isArray(loaded.transactions) ? loaded.transactions : [];
+  const txns = [];
+  const seenIds = new Set();
+  for (const raw of rawTxns) {
+    const s = sanitizeTxn(raw);
+    if (!s) continue;
+    if (seenIds.has(s.id)) continue; // de-dup any accidental duplicates
+    seenIds.add(s.id);
+    txns.push(s);
+  }
+  txns.sort((a, b) => b.timestamp - a.timestamp);
+  if (txns.length > TXN_HISTORY_CAP) txns.length = TXN_HISTORY_CAP;
+
+  const pin = { ...def.pin, ...(loaded.pin && typeof loaded.pin === 'object' ? loaded.pin : {}) };
+  pin.attempts = toInt(pin.attempts);
+  pin.lockoutUntil = Number(pin.lockoutUntil) || 0;
+
+  const merged = {
+    version: STATE_VERSION,
+    cashier,
+    drawer,
+    transactions: txns,
+    pin,
+  };
+
+  // Reconcile: when drawer is OPEN, balance MUST equal sum of denoms. Trust denoms.
+  if (merged.drawer.status === 'open') {
+    const reconstructed = sumDenoms(merged.drawer.denoms);
+    if (reconstructed !== merged.drawer.balance) {
+      console.warn(`Balance/denom mismatch on load. Trusting denoms. balance=${merged.drawer.balance}, denoms=${reconstructed}`);
+      merged.drawer.balance = reconstructed;
+    }
+  } else {
+    // Closed: zero live balance + denoms but PRESERVE last-session info for reports.
+    merged.drawer.balance = 0;
+    merged.drawer.denoms = createEmptyDenoms();
+  }
+
+  return merged;
+}
+
+/* ============================================================================
+   MONEY UTILITIES — strict integer arithmetic, no floats anywhere
+   ============================================================================ */
+function sumDenoms(denoms) {
+  let total = 0;
+  for (const d of DENOMINATIONS) {
+    const n = toInt(denoms[d]);
+    total += d * n;
+  }
+  return total;
+}
+
+function toInt(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  // Avoid parseInt's quirks with leading whitespace/exp notation.
+  if (typeof v === 'number') {
+    if (!Number.isFinite(v)) return 0;
+    return v < 0 ? 0 : Math.trunc(v);
+  }
+  const s = String(v).trim();
+  // Any leading sign or non-digit prefix → reject (return 0). This blocks "-5", "+5", "1e5".
+  if (!/^\d+$/.test(s)) {
+    // Allow mid-string non-digits to be stripped (e.g. "1,234" → 1234) but only if no signs/letters.
+    if (/[a-zA-Z+\-eE.]/.test(s)) return 0;
+    const cleaned = s.replace(/[^\d]/g, '');
+    if (cleaned === '') return 0;
+    const n = parseInt(cleaned, 10);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  }
+  const n = parseInt(s, 10);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return n;
+}
+
+/**
+ * sanitize(value) — single source of truth for cleaning user input.
+ *
+ * Two modes:
+ *   sanitize(v)              → returns a positive integer (or 0 for invalid)
+ *   sanitize(v, { asString }) → returns the cleaned digit-only STRING
+ *                                suitable for assigning back into <input>.value
+ *                                (returns "" for empty / all-zeros so the
+ *                                 placeholder shows)
+ *
+ * STRICT rejection rules — if input contains any of:
+ *   - sign characters   (+ -)
+ *   - decimal point     (.)
+ *   - exponent notation (e E)
+ *   - letters           (a-z A-Z)
+ * then sanitize returns 0 / "" outright. We do NOT silently strip these.
+ * Mid-string commas (1,234) are stripped because that's a known formatting
+ * convention from copy-paste; everything else is rejected.
+ *
+ * Length capped at opts.maxLen (default 8 — covers up to ₹99,999,999).
+ *
+ * Use this for ALL user-facing numeric input handlers.
+ */
+function sanitize(v, opts = {}) {
+  const maxLen = Number.isFinite(opts.maxLen) ? opts.maxLen : 8;
+  // Coerce to string. null / undefined → "".
+  let s = (v === null || v === undefined) ? '' : String(v);
+  // Strict reject: any sign / decimal / exponent / letter → invalid.
+  if (/[+\-.eE a-zA-Z]/.test(s)) {
+    return opts.asString ? '' : 0;
+  }
+  // Strip remaining non-digits (e.g. commas in "1,234").
+  s = s.replace(/\D/g, '');
+  // Strip ALL leading zeros — "0007" → "7", "0000" → "".
+  s = s.replace(/^0+/, '');
+  // Cap length.
+  if (s.length > maxLen) s = s.slice(0, maxLen);
+
+  if (opts.asString) return s;
+  return s === '' ? 0 : parseInt(s, 10);
+}
+
+function formatINR(n) {
+  const num = Math.abs(toInt(n));
+  // Indian numbering format (1,00,000 style).
+  const s = String(num);
+  if (s.length <= 3) return s;
+  const last3 = s.slice(-3);
+  const rest = s.slice(0, -3);
+  const withCommas = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',');
+  return withCommas + ',' + last3;
+}
+
+function amountInWords(num) {
+  const n = toInt(num);
+  if (n === 0) return '';
+  if (n > MAX_TXN_AMOUNT) return 'Amount too large';
+  const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  function below100(x) {
+    if (x < 20) return ones[x];
+    return tens[Math.floor(x/10)] + (x%10 ? ' ' + ones[x%10] : '');
+  }
+  function below1000(x) {
+    if (x < 100) return below100(x);
+    return ones[Math.floor(x/100)] + ' Hundred' + (x%100 ? ' ' + below100(x%100) : '');
+  }
+  let res = '';
+  const crore = Math.floor(n / 10000000);
+  const lakh = Math.floor((n % 10000000) / 100000);
+  const thousand = Math.floor((n % 100000) / 1000);
+  const rest = n % 1000;
+  if (crore) res += below1000(crore) + ' Crore ';
+  if (lakh) res += below100(lakh) + ' Lakh ';
+  if (thousand) res += below100(thousand) + ' Thousand ';
+  if (rest) res += below1000(rest);
+  return (res.trim() + ' Rupees').replace(/\s+/g, ' ');
+}
+
+/* ============================================================================
+   DOM HELPERS
+   ============================================================================ */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+function showScreen(id) {
+  // Always close any open modal when navigating away.
+  if (activeScreen !== id) {
+    hideConfirm();
+    closeTxnDetailQuiet();
+    closeSwapPanelQuiet();
+  }
+
+  $$('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) {
+    el.classList.add('active');
+    activeScreen = id;
+    el.scrollTop = 0;
+    // Also reset any inner scrollable region.
+    const inner = el.querySelector('.module-content, .dash-content');
+    if (inner) inner.scrollTop = 0;
+  }
+
+  // Maintain lockout ticker only on PIN screen.
+  if (id === 'pin-screen') startLockoutTicker();
+  else stopLockoutTicker();
+}
+
+// Quiet variants for use during screen transitions (don't error if elements not yet in DOM).
+function closeTxnDetailQuiet() {
+  const h = document.getElementById('txn-detail-host');
+  if (h) h.classList.remove('show');
+}
+function closeSwapPanelQuiet() {
+  const h = document.getElementById('swap-host');
+  if (h) h.classList.remove('show');
+  if (typeof swapState !== 'undefined') {
+    swapState.busy = false;
+    resetDenoms(swapState.remove);
+    resetDenoms(swapState.add);
+  }
+}
+
+function showToast(msg, kind = '') {
+  const host = $('#toast-host');
+  if (!host) return;
+  const t = document.createElement('div');
+  t.className = 'toast ' + kind;
+  t.textContent = msg;
+  host.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('leaving');
+    setTimeout(() => t.remove(), 250);
+  }, 2600);
+}
+
+function showConfirm({ icon = 'success', title, body, summary = [], confirmText = 'Confirm', cancelText = 'Cancel', danger = false }, onConfirm) {
+  modalBusy = false;
+  $('#modal-icon').className = 'modal-icon ' + icon;
+  $('#modal-icon').innerHTML =
+    icon === 'success' ? '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' :
+    icon === 'danger' ? '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>' :
+    '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>';
+  $('#modal-title').textContent = title || '';
+  $('#modal-body').textContent = body || '';                     // textContent: safe by default
+  const sum = $('#modal-summary');
+  if (summary.length) {
+    sum.style.display = '';
+    sum.innerHTML = '';
+    for (const [l, r] of summary) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const lEl = document.createElement('span'); lEl.className = 'l'; lEl.textContent = String(l);
+      const rEl = document.createElement('span'); rEl.className = 'r'; rEl.textContent = String(r);
+      row.appendChild(lEl); row.appendChild(rEl);
+      sum.appendChild(row);
+    }
+  } else {
+    sum.style.display = 'none';
+    sum.innerHTML = '';
+  }
+  const cb = $('#modal-confirm');
+  cb.textContent = confirmText;
+  cb.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+  cb.disabled = false;
+  $('#modal-cancel').textContent = cancelText;
+  confirmCallback = onConfirm;
+  $('#modal-host').classList.add('show');
+}
+
+function hideConfirm() {
+  $('#modal-host').classList.remove('show');
+  confirmCallback = null;
+  modalBusy = false;
+  const cb = $('#modal-confirm');
+  if (cb) cb.disabled = false;
+}
+
+/* ============================================================================
+   PIN — setup, unlock, lockout
+   ============================================================================ */
+function getStoredPin() {
+  try { return localStorage.getItem(PIN_KEY); } catch (e) { return null; }
+}
+function setStoredPin(pin) {
+  try { localStorage.setItem(PIN_KEY, pin); } catch (e) { showToast('Could not save PIN', 'error'); }
+}
+
+function isLockedOut() {
+  return !!(state.pin.lockoutUntil && Date.now() < state.pin.lockoutUntil);
+}
+function lockoutRemainingSec() {
+  return Math.max(1, Math.ceil((state.pin.lockoutUntil - Date.now()) / 1000));
+}
+
+function renderPinDots(containerSel, len, errored = false) {
+  const dots = $$(containerSel + ' .pin-dot');
+  dots.forEach((dot, i) => {
+    dot.classList.toggle('filled', i < len);
+    dot.classList.toggle('error', errored);
+  });
+}
+
+function setPinPadDisabled(padSel, disabled) {
+  $$(padSel + ' .pin-key').forEach(k => {
+    // Keep "reset" available even during lockout (so user can recover).
+    if (k.dataset.action === 'reset') { k.disabled = false; return; }
+    k.disabled = disabled;
+  });
+}
+
+function attachPinPad(padSel, dotsSel, errSel, onComplete, options = {}) {
+  const pad = $(padSel);
+  let buffer = '';
+  pad.addEventListener('click', (e) => {
+    const btn = e.target.closest('button.pin-key');
+    if (!btn || btn.disabled) return;
+    const d = btn.dataset.d;
+    const action = btn.dataset.action;
+    const errEl = $(errSel);
+    if (errEl) errEl.textContent = '\u00A0';
+    if (d !== undefined) {
+      if (buffer.length < 4) {
+        buffer += d;
+        renderPinDots(dotsSel, buffer.length);
+        if (buffer.length === 4) {
+          // Disable pad during async check to prevent rapid retries.
+          setPinPadDisabled(padSel, true);
+          setTimeout(() => {
+            const result = onComplete(buffer);
+            if (result === 'reset') {
+              buffer = '';
+              renderPinDots(dotsSel, 0);
+              setPinPadDisabled(padSel, false);
+            } else if (result === 'error') {
+              renderPinDots(dotsSel, 4, true);
+              setTimeout(() => {
+                buffer = '';
+                renderPinDots(dotsSel, 0);
+                setPinPadDisabled(padSel, false);
+              }, 500);
+            } else {
+              // 'consumed' — caller transitioned screens; clear buffer so reuse is safe.
+              buffer = '';
+              setPinPadDisabled(padSel, false);
+            }
+          }, 120);
+        }
+      }
+    } else if (action === 'del') {
+      buffer = buffer.slice(0, -1);
+      renderPinDots(dotsSel, buffer.length);
+    } else if (action === 'clear') {
+      buffer = '';
+      renderPinDots(dotsSel, 0);
+      if (options.onClear) options.onClear();
+    } else if (action === 'reset') {
+      if (options.onReset) options.onReset();
+    }
+  });
+  return {
+    reset: () => { buffer = ''; renderPinDots(dotsSel, 0); setPinPadDisabled(padSel, false); }
+  };
+}
+
+let setupPad, unlockPad;
+
+function initSetupPin() {
+  setupStep = 1;
+  setupPinFirst = '';
+  $('#setup-pin-title').textContent = 'Create your 4-digit PIN';
+  $('#setup-pin-hint').textContent = "This PIN unlocks the cash drawer. Don't share it.";
+  $('#setup-step').textContent = '1';
+  $('#setup-pin-error').textContent = '\u00A0';
+  renderPinDots('#setup-pin-dots', 0);
+  if (!setupPad) {
+    setupPad = attachPinPad('#setup-pin-pad', '#setup-pin-dots', '#setup-pin-error', (pin) => {
+      if (setupStep === 1) {
+        // Disallow trivial PINs (all-same / sequential).
+        if (isWeakPin(pin)) {
+          $('#setup-pin-error').textContent = 'Choose a less obvious PIN.';
+          return 'error';
+        }
+        setupPinFirst = pin;
+        setupStep = 2;
+        $('#setup-pin-title').textContent = 'Confirm your PIN';
+        $('#setup-pin-hint').textContent = 'Enter the same PIN again to confirm.';
+        $('#setup-step').textContent = '2';
+        return 'reset';
+      } else {
+        if (pin === setupPinFirst) {
+          setStoredPin(pin);
+          showToast('PIN created', 'success');
+          enterDashboard();
+          return 'consumed';
+        } else {
+          $('#setup-pin-error').textContent = "PINs don't match. Start over.";
+          setupStep = 1;
+          setupPinFirst = '';
+          $('#setup-pin-title').textContent = 'Create your 4-digit PIN';
+          $('#setup-pin-hint').textContent = "This PIN unlocks the cash drawer. Don't share it.";
+          $('#setup-step').textContent = '1';
+          return 'error';
+        }
+      }
+    });
+  }
+}
+
+function isWeakPin(pin) {
+  if (!/^\d{4}$/.test(pin)) return true;
+  if (/^(\d)\1{3}$/.test(pin)) return true; // 0000, 1111…
+  // sequential up/down
+  const digits = pin.split('').map(Number);
+  const upSeq = digits.every((d, i) => i === 0 || d === digits[i-1] + 1);
+  const downSeq = digits.every((d, i) => i === 0 || d === digits[i-1] - 1);
+  if (upSeq || downSeq) return true;
+  return false;
+}
+
+function initUnlockPin() {
+  $('#pin-cashier-name').textContent = state.cashier.name;
+  $('#pin-error').textContent = '\u00A0';
+  updatePinAttemptsLabel();
+  renderPinDots('#pin-dots', 0);
+  if (unlockPad) unlockPad.reset();
+  // If currently locked out, freeze the pad immediately.
+  setPinPadDisabled('#pin-pad', isLockedOut());
+  if (!unlockPad) {
+    unlockPad = attachPinPad('#pin-pad', '#pin-dots', '#pin-error', (pin) => {
+      if (isLockedOut()) {
+        $('#pin-error').textContent = `Locked. Try again in ${lockoutRemainingSec()}s.`;
+        return 'error';
+      }
+      const stored = getStoredPin();
+      if (stored && pin === stored) {
+        state.pin.attempts = 0;
+        state.pin.lockoutUntil = 0;
+        safeSave();
+        enterDashboard();
+        return 'consumed';
+      } else {
+        state.pin.attempts++;
+        if (state.pin.attempts >= MAX_PIN_ATTEMPTS) {
+          state.pin.lockoutUntil = Date.now() + LOCKOUT_SECONDS * 1000;
+          state.pin.attempts = 0;
+          $('#pin-error').textContent = `Too many attempts. Locked for ${LOCKOUT_SECONDS} seconds.`;
+          // Disable pad immediately on lockout.
+          setTimeout(() => setPinPadDisabled('#pin-pad', true), 600);
+        } else {
+          const left = MAX_PIN_ATTEMPTS - state.pin.attempts;
+          $('#pin-error').textContent = `Incorrect PIN. ${left} attempt${left===1?'':'s'} left.`;
+        }
+        safeSave();
+        updatePinAttemptsLabel();
+        return 'error';
+      }
+    }, {
+      onReset: () => {
+        showConfirm({
+          icon: 'warn',
+          title: 'Reset PIN?',
+          body: 'This will delete your PIN and all saved data. You will set up the app again. This cannot be undone.',
+          confirmText: 'Reset everything',
+          danger: true,
+        }, () => {
+          if (modalBusy) return;
+          modalBusy = true;
+          try { localStorage.removeItem(PIN_KEY); localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+          state = createDefaultState();
+          hideConfirm();
+          showScreen('setup-pin-screen');
+          initSetupPin();
+        });
+      }
+    });
+  }
+}
+
+function updatePinAttemptsLabel() {
+  const el = $('#pin-attempts-info');
+  if (!el) return;
+  if (isLockedOut()) {
+    el.innerHTML = `<span class="pin-lockout">Locked · ${lockoutRemainingSec()}s remaining</span>`;
+    setPinPadDisabled('#pin-pad', true);
+  } else {
+    const left = MAX_PIN_ATTEMPTS - state.pin.attempts;
+    el.textContent = `${left} attempt${left===1?'':'s'} remaining`;
+    setPinPadDisabled('#pin-pad', false);
+  }
+}
+
+function startLockoutTicker() {
+  stopLockoutTicker();
+  // Tick every 1s — short lockout window needs second-by-second feedback.
+  lockoutTickHandle = setInterval(() => {
+    if (activeScreen !== 'pin-screen') { stopLockoutTicker(); return; }
+    if (state.pin.lockoutUntil && Date.now() >= state.pin.lockoutUntil) {
+      // Lockout expired
+      state.pin.lockoutUntil = 0;
+      safeSave();
+      $('#pin-error').textContent = '\u00A0';
+    }
+    updatePinAttemptsLabel();
+  }, 1000);
+}
+function stopLockoutTicker() {
+  if (lockoutTickHandle) { clearInterval(lockoutTickHandle); lockoutTickHandle = null; }
+}
+
+/* ============================================================================
+   DASHBOARD RENDERING
+   ============================================================================ */
+function enterDashboard() {
+  showScreen('dashboard');
+  renderDashboard();
+}
+
+function greetingForHour(h) {
+  if (h < 5) return 'Working late';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+/* ============================================================================
+   GLOBAL RENDER ORCHESTRATOR
+   ----------------------------------------------------------------------------
+   Single entry point called after EVERY state mutation (credit, debit, swap,
+   open day, close day). Each individual render function reads from `state`
+   and is safe to call even when its screen is not active — it just writes to
+   off-screen DOM that becomes correct when the user navigates there.
+
+   Use renderAll() instead of scattering renderDashboard()/renderDrawerScreen()
+   /renderTxnList() calls across handlers.
+   ============================================================================ */
+function renderAll() {
+  // Always normalize drawer first so all renderers see a clean state.
+  cleanDrawerInvariants();
+  // Dashboard stats are derived from drawer + transactions — always render.
+  try { renderDashboard(); } catch (e) { console.error('renderDashboard failed:', e); }
+  // Drawer screen — render only if it's the active screen, otherwise it'll
+  // re-render when navigated to. Calling its render off-screen is also safe,
+  // but it tears down/rebuilds the denom grid which is wasted work.
+  if (activeScreen === 'screen-drawer') {
+    try { renderDrawerScreen(); } catch (e) { console.error('renderDrawerScreen failed:', e); }
+  }
+  // Transactions list — only if visible.
+  if (activeScreen === 'screen-txns') {
+    try { renderTxnList(); } catch (e) { console.error('renderTxnList failed:', e); }
+  }
+  // Reports — only if visible.
+  if (activeScreen === 'screen-reports') {
+    try { renderReportsScreen(); } catch (e) { console.error('renderReportsScreen failed:', e); }
+  }
+}
+
+/**
+ * Drawer safety: enforce invariants on state.drawer.denoms.
+ *   - Every denomination key from DENOMINATIONS exists (default 0)
+ *   - No negative counts (clamp to 0)
+ *   - No counts above MAX_NOTES_PER_DENOM (clamp)
+ *   - balance is recomputed from denoms (single source of truth)
+ *
+ * Note: we intentionally KEEP zero-value denoms in the live drawer — the
+ * grids and validators iterate DENOMINATIONS and expect every key present.
+ * Zero-value cleanup only happens when WRITING a transaction record (via
+ * cleanZeroDenoms in the swap path).
+ */
+function cleanDrawerInvariants() {
+  if (!state.drawer || typeof state.drawer !== 'object') return;
+  if (!state.drawer.denoms || typeof state.drawer.denoms !== 'object') {
+    state.drawer.denoms = createEmptyDenoms();
+  }
+  for (const d of DENOMINATIONS) {
+    let n = toInt(state.drawer.denoms[d]);
+    if (!Number.isFinite(n) || n < 0) n = 0;
+    if (n > MAX_NOTES_PER_DENOM) n = MAX_NOTES_PER_DENOM;
+    state.drawer.denoms[d] = n;
+  }
+  // Recompute balance from denoms.
+  state.drawer.balance = sumDenoms(state.drawer.denoms);
+}
+
+function renderDashboard() {
+  const now = new Date();
+  $('#greeting-time').textContent = greetingForHour(now.getHours());
+  $('#greeting-name').textContent = state.cashier.name;
+  $('#avatar-initials').textContent = state.cashier.initials;
+  $('#cashier-id').textContent = state.cashier.id;
+
+  const isOpen = state.drawer.status === 'open';
+  $('#status-dot').className = 'status-dot ' + (isOpen ? 'open' : 'closed');
+  $('#status-label').textContent = isOpen ? 'Drawer is OPEN' : 'Drawer is CLOSED';
+  $('#balance-display').textContent = formatINR(state.drawer.balance);
+  $('#drawer-badge').textContent = isOpen ? 'Open' : 'Closed';
+  $('#drawer-badge').className = 'module-badge' + (isOpen ? '' : ' locked');
+  $('#drawer-sub').textContent = isOpen ? 'Manage' : 'Open / Close';
+
+  // Visually disable Credit/Debit when drawer is closed (still preserves design — uses existing :disabled style).
+  const creditCard = document.querySelector('.module-card[data-go="credit"]');
+  const debitCard  = document.querySelector('.module-card[data-go="debit"]');
+  if (creditCard) creditCard.disabled = !isOpen;
+  if (debitCard)  debitCard.disabled  = !isOpen || state.drawer.balance <= 0;
+
+  // Today totals (calendar day) — for the dashboard card.
+  const today = todayKey();
+  let cToday = 0, dToday = 0, cnt = 0;
+  for (const t of state.transactions) {
+    if (dateKey(t.timestamp) !== today) continue;
+    if (t.type === 'credit') { cToday += t.amount; cnt++; }
+    else if (t.type === 'debit') { dToday += t.amount; cnt++; }
+  }
+  $('#credits-today').textContent = formatINR(cToday);
+  $('#debits-today').textContent = formatINR(dToday);
+  $('#txn-count-sub').textContent = `${cnt} today`;
+  $('#day-label').textContent = isOpen
+    ? `Day open · ${new Date(state.drawer.openedAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short' })}`
+    : 'No active day';
+
+  $('#day-action-btn').textContent = isOpen ? 'Close Day' : 'Open Day';
+}
+
+function todayKey() { return dateKey(Date.now()); }
+function dateKey(ts) {
+  const d = new Date(Number(ts) || 0);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/* ============================================================================
+   DENOMINATION GRID — generic builder (single delegated input listener)
+   ============================================================================ */
+function buildDenomGrid(rootSel, denomsRef, opts = {}) {
+  const root = $(rootSel);
+  if (!root) return;
+  root.innerHTML = '';
+  const max = opts.max || null; // function (denom) => max count
+  for (const d of DENOMINATIONS) {
+    const row = document.createElement('div');
+    row.className = 'denom-row';
+    row.innerHTML = `
+      <div class="denom-label"><span class="currency">₹</span>${d}</div>
+      <input type="tel" inputmode="numeric" maxlength="6" class="denom-input" data-denom="${d}" placeholder="0" autocomplete="off" />
+      <div class="denom-total zero" data-total="${d}">₹0</div>
+    `;
+    root.appendChild(row);
+  }
+  // Keep latest options on the element so the delegated listener uses fresh refs/caps.
+  root._denomsRef = denomsRef;
+  root._opts = opts;
+
+  syncDenomGrid(root, denomsRef);
+
+  if (!root.dataset.wired) {
+    root.dataset.wired = '1';
+    root.addEventListener('input', (e) => {
+      const inp = e.target;
+      if (!inp.classList || !inp.classList.contains('denom-input')) return;
+      const ref = root._denomsRef;
+      const o = root._opts || {};
+      const denom = parseInt(inp.dataset.denom, 10);
+      // Single sanitization pipeline: digits only, leading zeros stripped, length capped.
+      let n = sanitize(inp.value, { maxLen: 6 });
+      if (n > MAX_NOTES_PER_DENOM) n = MAX_NOTES_PER_DENOM;
+      if (o.max) {
+        const cap = toInt(o.max(denom));
+        if (n > cap) {
+          n = cap;
+          showToast(`Only ${cap} × ₹${denom} note${cap===1?'':'s'} available`, 'warn');
+        }
+      }
+      const newVal = n === 0 ? '' : String(n);
+      if (inp.value !== newVal) inp.value = newVal;
+      ref[denom] = n;
+      const totalCell = root.querySelector(`[data-total="${denom}"]`);
+      const sub = denom * n;
+      if (totalCell) {
+        totalCell.textContent = '₹' + formatINR(sub);
+        totalCell.classList.toggle('zero', sub === 0);
+      }
+      if (o.onChange) o.onChange();
+    });
+    // Also block invalid keys (e, +, -, .) before they appear.
+    root.addEventListener('keydown', (e) => {
+      if (!e.target.classList || !e.target.classList.contains('denom-input')) return;
+      if (['e','E','+','-','.',','].includes(e.key)) e.preventDefault();
+    });
+  }
+}
+
+function syncDenomGrid(root, denomsRef) {
+  for (const d of DENOMINATIONS) {
+    const inp = root.querySelector(`input[data-denom="${d}"]`);
+    const totalCell = root.querySelector(`[data-total="${d}"]`);
+    if (!inp || !totalCell) continue;
+    const n = toInt(denomsRef[d]);
+    inp.value = n === 0 ? '' : String(n);
+    const sub = d * n;
+    totalCell.textContent = '₹' + formatINR(sub);
+    totalCell.classList.toggle('zero', sub === 0);
+  }
+}
+
+function resetDenoms(d) {
+  for (const k of DENOMINATIONS) d[k] = 0;
+}
+
+/* ============================================================================
+   DRAWER SCREEN — Open / Close
+   ============================================================================ */
+function renderDrawerScreen() {
+  const isOpen = state.drawer.status === 'open';
+  $('#drawer-pill').textContent = isOpen ? 'Open' : 'Closed';
+  $('#drawer-pill').className = 'pill ' + (isOpen ? 'open' : 'closed');
+  $('#drawer-balance').textContent = formatINR(state.drawer.balance);
+  $('#drawer-opened-at').textContent = state.drawer.openedAt
+    ? new Date(state.drawer.openedAt).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
+    : '—';
+  $('#drawer-help').textContent = isOpen
+    ? 'Drawer is open. You can take credits and debits. End the day to close.'
+    : 'Open the day with your starting denominations. Once open, you can take credits and debits.';
+
+  if (!isOpen) {
+    $('#open-day-block').style.display = '';
+    $('#close-day-block').style.display = 'none';
+    $('#close-day-trigger').style.display = 'none';
+    $('#swap-trigger').style.display = 'none';
+    resetDenoms(openDenoms);
+    buildDenomGrid('#open-denom-grid', openDenoms, { onChange: updateOpenSummary });
+    updateOpenSummary();
+  } else {
+    $('#open-day-block').style.display = 'none';
+    $('#close-day-trigger').style.display = '';
+    $('#close-day-block').style.display = 'none';
+    // Swap is only useful when drawer has notes to take out.
+    $('#swap-trigger').style.display = state.drawer.balance > 0 ? '' : 'none';
+  }
+}
+
+function updateOpenSummary() {
+  const total = sumDenoms(openDenoms);
+  $('#open-denom-total').textContent = formatINR(total);
+  const sum = $('#open-denom-summary');
+  const ind = $('#open-denom-indicator');
+  const btn = $('#btn-open-day');
+  if (total === 0) {
+    sum.className = 'denom-summary';
+    ind.textContent = 'Enter notes';
+    btn.disabled = true;
+  } else if (total > MAX_DRAWER_BALANCE) {
+    sum.className = 'denom-summary mismatch';
+    ind.textContent = 'Exceeds limit';
+    btn.disabled = true;
+  } else {
+    sum.className = 'denom-summary match';
+    ind.textContent = '✓ Ready';
+    btn.disabled = false;
+  }
+}
+
+function showCloseDayUI() {
+  $('#close-day-trigger').style.display = 'none';
+  $('#close-day-block').style.display = '';
+  resetDenoms(closeDenoms);
+  buildDenomGrid('#close-denom-grid', closeDenoms, { onChange: updateCloseSummary });
+  updateCloseSummary();
+}
+
+function updateCloseSummary() {
+  const counted = sumDenoms(closeDenoms);
+  const expected = state.drawer.balance;
+  const variance = counted - expected;
+  $('#close-denom-total').textContent = formatINR(counted);
+  $('#close-counted').textContent = formatINR(counted);
+  $('#close-expected').textContent = formatINR(expected);
+  const vEl = $('#close-variance');
+  if (variance === 0) {
+    vEl.textContent = '₹0 (matched)';
+    vEl.style.color = 'var(--green-600)';
+  } else if (variance > 0) {
+    vEl.textContent = `+₹${formatINR(variance)} (over)`;
+    vEl.style.color = 'var(--amber-600)';
+  } else {
+    vEl.textContent = `−₹${formatINR(Math.abs(variance))} (short)`;
+    vEl.style.color = 'var(--red-500)';
+  }
+  const sum = $('#close-denom-summary');
+  const ind = $('#close-denom-indicator');
+  sum.className = 'denom-summary' + (variance === 0 ? ' match' : (counted === 0 ? '' : ' mismatch'));
+  ind.textContent = counted === 0 ? 'Counting…' : (variance === 0 ? '✓ Matches' : 'Variance');
+  $('#btn-close-day').disabled = counted === 0;
+}
+
+function setBtnLoading(btn, loading) {
+  if (!btn) return;
+  if (loading) {
+    btn.classList.add('loading');
+    btn.disabled = true;
+  } else {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+}
+
+function openDay() {
+  if (state.drawer.status === 'open') {
+    showToast('Drawer is already open', 'warn');
+    return;
+  }
+  // Snapshot at click time — used at commit to detect tampering.
+  const snapshotDenoms = { ...openDenoms };
+  const total = sumDenoms(snapshotDenoms);
+  if (total <= 0) {
+    showToast('Enter at least one denomination', 'error');
+    return;
+  }
+  if (total > MAX_DRAWER_BALANCE) {
+    showToast('Opening balance exceeds maximum capacity', 'error');
+    return;
+  }
+
+  const btn = $('#btn-open-day');
+  showConfirm({
+    icon: 'success',
+    title: 'Open day with this float?',
+    body: 'You are about to start a new business day. Verify the count.',
+    summary: [
+      ['Opening balance', '₹' + formatINR(total)],
+      ['Cashier', state.cashier.name],
+      ['Date', new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })],
+    ],
+    confirmText: 'Open Day',
+  }, () => {
+    if (modalBusy) return;
+    modalBusy = true;
+    setBtnLoading($('#modal-confirm'), true);
+
+    // Defense in depth: re-check current state.
+    if (state.drawer.status === 'open') {
+      setBtnLoading($('#modal-confirm'), false);
+      modalBusy = false;
+      hideConfirm();
+      showToast('Drawer was already opened', 'warn');
+      renderAll();
+      showScreen('dashboard');
+      return;
+    }
+
+    state.drawer.status = 'open';
+    state.drawer.denoms = { ...snapshotDenoms };
+    reconcileBalance();
+    state.drawer.openedAt = Date.now();
+    state.drawer.closedAt = null;
+    state.drawer.openingBalance = total;
+
+    pushTransaction({
+      type: 'system',
+      subtype: 'open_day',
+      amount: total,
+      label: 'Day Opened',
+      denoms: { ...snapshotDenoms },
+    });
+    safeSave();
+
+    setBtnLoading($('#modal-confirm'), false);
+    setBtnLoading(btn, false);
+    hideConfirm();
+    showToast('Day opened · ₹' + formatINR(total), 'success');
+    lastSubmitTime = Date.now();
+    renderAll();
+    showScreen('dashboard');
+  });
+}
+
+function closeDay() {
+  if (state.drawer.status !== 'open') {
+    showToast('No active day to close', 'warn');
+    return;
+  }
+  const snapshotDenoms = { ...closeDenoms };
+  const counted = sumDenoms(snapshotDenoms);
+  const expected = state.drawer.balance;
+  const variance = counted - expected;
+  if (counted === 0) { showToast('Count the drawer first', 'error'); return; }
+
+  showConfirm({
+    icon: variance === 0 ? 'success' : 'warn',
+    title: 'Close day?',
+    body: variance === 0
+      ? 'Counted cash matches the system balance.'
+      : 'There is a variance. The day will still close but will be flagged.',
+    summary: [
+      ['Expected', '₹' + formatINR(expected)],
+      ['Counted', '₹' + formatINR(counted)],
+      ['Variance', (variance >= 0 ? '+' : '−') + '₹' + formatINR(Math.abs(variance))],
+    ],
+    confirmText: 'Close Day',
+    danger: variance !== 0,
+  }, () => {
+    if (modalBusy) return;
+    modalBusy = true;
+    setBtnLoading($('#modal-confirm'), true);
+
+    if (state.drawer.status !== 'open') {
+      setBtnLoading($('#modal-confirm'), false);
+      modalBusy = false;
+      hideConfirm();
+      showToast('Day already closed', 'warn');
+      return;
+    }
+
+    pushTransaction({
+      type: 'system',
+      subtype: 'close_day',
+      amount: counted,
+      label: 'Day Closed' + (variance !== 0 ? ` (variance ${variance>0?'+':''}${variance})` : ''),
+      denoms: { ...snapshotDenoms },
+      meta: { expected, counted, variance, openingBalance: state.drawer.openingBalance },
+    });
+    // Preserve last-day info BEFORE wiping live drawer.
+    state.drawer.lastClosedAt = Date.now();
+    state.drawer.lastClosingBalance = counted;
+    state.drawer.status = 'closed';
+    state.drawer.closedAt = Date.now();
+    state.drawer.denoms = createEmptyDenoms();
+    reconcileBalance();
+    // Note: openingBalance NOT zeroed — used for last-session reports.
+    safeSave();
+
+    setBtnLoading($('#modal-confirm'), false);
+    hideConfirm();
+    showToast('Day closed', variance === 0 ? 'success' : 'warn');
+    lastSubmitTime = Date.now();
+    renderAll();
+    showScreen('dashboard');
+  });
+}
+
+/* ============================================================================
+   CREDIT
+   ============================================================================ */
+function renderCreditScreen() {
+  if (state.drawer.status !== 'open') {
+    showToast('Open the drawer first', 'warn');
+    showScreen('screen-drawer');
+    renderDrawerScreen();
+    return;
+  }
+  $('#credit-name').value = '';
+  $('#credit-acct').value = '';
+  $('#credit-amount').value = '';
+  $('#credit-note').value = '';
+  $('#credit-amount-words').textContent = '';
+  $$('#screen-credit .field').forEach(f => f.classList.remove('has-error'));
+  resetDenoms(creditDenoms);
+  buildDenomGrid('#credit-denom-grid', creditDenoms, { onChange: updateCreditSummary });
+  updateCreditSummary();
+  validateCreditButton();
+  setBtnLoading($('#btn-credit-submit'), false);
+  $('#btn-credit-submit').disabled = true;
+}
+
+function updateCreditSummary() {
+  const counted = sumDenoms(creditDenoms);
+  const amount = toInt($('#credit-amount').value);
+  $('#credit-denom-total').textContent = formatINR(counted);
+  const sum = $('#credit-denom-summary');
+  const ind = $('#credit-denom-indicator');
+  if (counted === 0 && amount === 0) {
+    sum.className = 'denom-summary';
+    ind.textContent = 'Enter notes';
+  } else if (counted === amount && amount > 0) {
+    sum.className = 'denom-summary match';
+    ind.textContent = '✓ Matches amount';
+  } else {
+    sum.className = 'denom-summary mismatch';
+    const diff = amount - counted;
+    ind.textContent = diff > 0 ? `Short ₹${formatINR(diff)}` : `Over ₹${formatINR(-diff)}`;
+  }
+  validateCreditButton();
+}
+
+function validateCreditButton() {
+  const name = $('#credit-name').value.trim();
+  const acct = $('#credit-acct').value.replace(/\D/g, '');
+  const amount = toInt($('#credit-amount').value);
+  const counted = sumDenoms(creditDenoms);
+  const newBalanceWouldBe = state.drawer.balance + amount;
+  const ok = state.drawer.status === 'open' &&
+             name.length >= 2 && /\S/.test(name) &&
+             acct.length >= 9 && acct.length <= 18 &&
+             amount > 0 && amount <= MAX_TXN_AMOUNT &&
+             newBalanceWouldBe <= MAX_DRAWER_BALANCE &&
+             counted === amount;
+  $('#btn-credit-submit').disabled = !ok;
+}
+
+function submitCredit() {
+  const submitBtn = $('#btn-credit-submit');
+  if (submitBtn.disabled) return;
+  if (Date.now() - lastSubmitTime < SUBMIT_COOLDOWN_MS) {
+    showToast('Please wait…', 'warn');
+    return;
+  }
+
+  // Snapshot inputs at click time — modal confirm uses these exact values.
+  const name = $('#credit-name').value.trim();
+  const acct = $('#credit-acct').value.replace(/\D/g, '');
+  const amount = toInt($('#credit-amount').value);
+  const note = $('#credit-note').value.trim();
+  const snapshotDenoms = { ...creditDenoms };
+  const counted = sumDenoms(snapshotDenoms);
+
+  // Hard validation.
+  let valid = true;
+  $$('#screen-credit .field').forEach(f => f.classList.remove('has-error'));
+  if (name.length < 2) { $('#f-credit-name').classList.add('has-error'); valid = false; }
+  if (acct.length < 9 || acct.length > 18) { $('#f-credit-acct').classList.add('has-error'); valid = false; }
+  if (amount <= 0 || amount > MAX_TXN_AMOUNT) { $('#f-credit-amount').classList.add('has-error'); valid = false; }
+  if (!valid) { showToast('Please fix the highlighted fields', 'error'); return; }
+  if (counted !== amount) { showToast('Denomination total must match amount', 'error'); return; }
+  if (state.drawer.status !== 'open') { showToast('Drawer is closed', 'error'); return; }
+  if (state.drawer.balance + amount > MAX_DRAWER_BALANCE) {
+    showToast('Drawer would exceed maximum capacity', 'error'); return;
+  }
+
+  // Lock the form button while modal is open — single source of "in flight".
+  setBtnLoading(submitBtn, true);
+
+  showConfirm({
+    icon: 'success',
+    title: 'Confirm credit?',
+    body: 'Cash deposit will be added to drawer.',
+    summary: [
+      ['Customer', name],
+      ['Account', acct],
+      ['Amount', '₹' + formatINR(amount)],
+      ['Drawer after', '₹' + formatINR(state.drawer.balance + amount)],
+    ],
+    confirmText: 'Confirm Credit',
+  }, () => {
+    if (modalBusy) return;
+    modalBusy = true;
+    setBtnLoading($('#modal-confirm'), true);
+
+    // Re-check at apply time.
+    if (state.drawer.status !== 'open') {
+      modalBusy = false;
+      setBtnLoading($('#modal-confirm'), false);
+      setBtnLoading(submitBtn, false);
+      hideConfirm();
+      showToast('Drawer is closed — transaction cancelled', 'error');
+      return;
+    }
+    const newBalance = state.drawer.balance + amount;
+    if (newBalance > MAX_DRAWER_BALANCE) {
+      modalBusy = false;
+      setBtnLoading($('#modal-confirm'), false);
+      setBtnLoading(submitBtn, false);
+      hideConfirm();
+      showToast('Drawer would exceed maximum capacity', 'error');
+      return;
+    }
+
+    // Mutate denoms first; balance is derived (reconcileBalance is the single source of truth).
+    for (const d of DENOMINATIONS) {
+      state.drawer.denoms[d] = toInt(state.drawer.denoms[d]) + toInt(snapshotDenoms[d]);
+    }
+    reconcileBalance();
+    pushTransaction({
+      type: 'credit',
+      amount,
+      customer: name,
+      account: acct,
+      note,
+      denoms: { ...snapshotDenoms },
+      label: name,
+    });
+    safeSave();
+
+    setBtnLoading($('#modal-confirm'), false);
+    setBtnLoading(submitBtn, false);
+    hideConfirm();
+    showToast('Credit ₹' + formatINR(amount) + ' added', 'success');
+    lastSubmitTime = Date.now();
+    renderAll();
+    showScreen('dashboard');
+  });
+
+  // If user cancels the modal, also unlock the form button.
+  // Cancel handler clears confirmCallback via hideConfirm, so we hook on the cancel button click.
+  // (The single 'modal-cancel' listener already calls hideConfirm — we extend below with a small helper.)
+  pendingFormUnlock = submitBtn;
+}
+
+/* ============================================================================
+   DEBIT
+   ============================================================================ */
+function renderDebitScreen() {
+  if (state.drawer.status !== 'open') {
+    showToast('Open the drawer first', 'warn');
+    showScreen('screen-drawer');
+    renderDrawerScreen();
+    return;
+  }
+  if (state.drawer.balance <= 0) {
+    showToast('Drawer is empty', 'warn');
+    showScreen('dashboard');
+    return;
+  }
+  $('#debit-name').value = '';
+  $('#debit-acct').value = '';
+  $('#debit-amount').value = '';
+  $('#debit-note').value = '';
+  $('#debit-amount-words').textContent = '';
+  $('#debit-available').textContent = formatINR(state.drawer.balance);
+  $$('#screen-debit .field').forEach(f => f.classList.remove('has-error'));
+  resetDenoms(debitDenoms);
+  buildDenomGrid('#debit-denom-grid', debitDenoms, {
+    onChange: updateDebitSummary,
+    max: (denom) => toInt(state.drawer.denoms[denom]),
+  });
+  updateDebitSummary();
+  validateDebitButton();
+  setBtnLoading($('#btn-debit-submit'), false);
+  $('#btn-debit-submit').disabled = true;
+}
+
+function updateDebitSummary() {
+  const counted = sumDenoms(debitDenoms);
+  const amount = toInt($('#debit-amount').value);
+  $('#debit-denom-total').textContent = formatINR(counted);
+  const sum = $('#debit-denom-summary');
+  const ind = $('#debit-denom-indicator');
+  if (counted === 0 && amount === 0) {
+    sum.className = 'denom-summary';
+    ind.textContent = 'Enter notes';
+  } else if (amount > state.drawer.balance) {
+    sum.className = 'denom-summary mismatch';
+    ind.textContent = 'Exceeds drawer balance';
+  } else if (counted === amount && amount > 0) {
+    sum.className = 'denom-summary match';
+    ind.textContent = '✓ Matches amount';
+  } else {
+    sum.className = 'denom-summary mismatch';
+    const diff = amount - counted;
+    ind.textContent = diff > 0 ? `Short ₹${formatINR(diff)}` : `Over ₹${formatINR(-diff)}`;
+  }
+  validateDebitButton();
+}
+
+function validateDebitButton() {
+  const name = $('#debit-name').value.trim();
+  const acct = $('#debit-acct').value.replace(/\D/g, '');
+  const amount = toInt($('#debit-amount').value);
+  const counted = sumDenoms(debitDenoms);
+  const ok = state.drawer.status === 'open' &&
+             name.length >= 2 && /\S/.test(name) &&
+             acct.length >= 9 && acct.length <= 18 &&
+             amount > 0 && amount <= state.drawer.balance &&
+             amount <= MAX_TXN_AMOUNT &&
+             counted === amount &&
+             allDenomsAvailable(debitDenoms);
+  $('#btn-debit-submit').disabled = !ok;
+}
+
+function allDenomsAvailable(reqDenoms) {
+  for (const d of DENOMINATIONS) {
+    if (toInt(reqDenoms[d]) > toInt(state.drawer.denoms[d])) return false;
+  }
+  return true;
+}
+
+function submitDebit() {
+  const submitBtn = $('#btn-debit-submit');
+  if (submitBtn.disabled) return;
+  if (Date.now() - lastSubmitTime < SUBMIT_COOLDOWN_MS) {
+    showToast('Please wait…', 'warn');
+    return;
+  }
+
+  const name = $('#debit-name').value.trim();
+  const acct = $('#debit-acct').value.replace(/\D/g, '');
+  const amount = toInt($('#debit-amount').value);
+  const note = $('#debit-note').value.trim();
+  const snapshotDenoms = { ...debitDenoms };
+  const counted = sumDenoms(snapshotDenoms);
+
+  let valid = true;
+  $$('#screen-debit .field').forEach(f => f.classList.remove('has-error'));
+  if (name.length < 2) { $('#f-debit-name').classList.add('has-error'); valid = false; }
+  if (acct.length < 9 || acct.length > 18) { $('#f-debit-acct').classList.add('has-error'); valid = false; }
+  if (amount <= 0 || amount > state.drawer.balance) { $('#f-debit-amount').classList.add('has-error'); valid = false; }
+  if (amount > MAX_TXN_AMOUNT) { $('#f-debit-amount').classList.add('has-error'); valid = false; }
+  if (!valid) { showToast('Please fix the highlighted fields', 'error'); return; }
+  if (counted !== amount) { showToast('Denomination total must match amount', 'error'); return; }
+  if (!allDenomsAvailable(snapshotDenoms)) { showToast('Insufficient notes of one or more denominations', 'error'); return; }
+  if (state.drawer.status !== 'open') { showToast('Drawer is closed', 'error'); return; }
+
+  setBtnLoading(submitBtn, true);
+
+  showConfirm({
+    icon: 'danger',
+    title: 'Confirm debit?',
+    body: 'Cash will be paid out from drawer.',
+    summary: [
+      ['Customer', name],
+      ['Account', acct],
+      ['Amount', '₹' + formatINR(amount)],
+      ['Drawer after', '₹' + formatINR(state.drawer.balance - amount)],
+    ],
+    confirmText: 'Confirm Debit',
+    danger: true,
+  }, () => {
+    if (modalBusy) return;
+    modalBusy = true;
+    setBtnLoading($('#modal-confirm'), true);
+
+    // Re-check at apply time (defense in depth).
+    if (state.drawer.status !== 'open') {
+      modalBusy = false;
+      setBtnLoading($('#modal-confirm'), false);
+      setBtnLoading(submitBtn, false);
+      hideConfirm();
+      showToast('Drawer is closed — transaction cancelled', 'error');
+      return;
+    }
+    if (state.drawer.balance < amount) {
+      modalBusy = false;
+      setBtnLoading($('#modal-confirm'), false);
+      setBtnLoading(submitBtn, false);
+      hideConfirm();
+      showToast('Insufficient drawer balance', 'error');
+      return;
+    }
+    // Recheck against latest live denoms (snapshot uses caller's debitDenoms reference state).
+    if (!allDenomsAvailable(snapshotDenoms)) {
+      modalBusy = false;
+      setBtnLoading($('#modal-confirm'), false);
+      setBtnLoading(submitBtn, false);
+      hideConfirm();
+      showToast('State changed — please re-enter', 'error');
+      return;
+    }
+
+    for (const d of DENOMINATIONS) {
+      state.drawer.denoms[d] = toInt(state.drawer.denoms[d]) - toInt(snapshotDenoms[d]);
+    }
+    reconcileBalance();
+    pushTransaction({
+      type: 'debit',
+      amount,
+      customer: name,
+      account: acct,
+      note,
+      denoms: { ...snapshotDenoms },
+      label: name,
+    });
+    safeSave();
+
+    setBtnLoading($('#modal-confirm'), false);
+    setBtnLoading(submitBtn, false);
+    hideConfirm();
+    showToast('Debit ₹' + formatINR(amount) + ' paid', 'success');
+    lastSubmitTime = Date.now();
+    renderAll();
+    showScreen('dashboard');
+  });
+
+  pendingFormUnlock = submitBtn;
+}
+
+// Used by modal cancel/dismiss to release the form button if user backs out.
+let pendingFormUnlock = null;
+
+/* ============================================================================
+   TRANSACTIONS
+   ============================================================================ */
+function generateTxnId() {
+  // Time-prefixed + random suffix. Always unique per push.
+  return 'TXN-' + Date.now().toString(36).toUpperCase() + '-' +
+         Math.random().toString(36).slice(2, 6).toUpperCase() +
+         '-' + (state.transactions.length & 0xFFFF).toString(36).toUpperCase();
+}
+
+function pushTransaction(tx) {
+  const id = generateTxnId();
+  // Snapshot the drawer state AT THE TIME the transaction is being recorded.
+  // For credit/debit/swap, callers commit drawer mutations BEFORE pushTransaction,
+  // so this captures the post-transaction drawer (the auditable state going
+  // forward). For 'open_day' the snapshot equals the opening balance; for
+  // 'close_day' the snapshot is empty (drawer was just emptied).
+  const drawerSnapshot = {
+    status: state.drawer.status,
+    balance: state.drawer.balance,
+    // Clone denom counts (only non-zero entries to keep the record compact).
+    denoms: cleanZeroDenoms(state.drawer.denoms || {}),
+  };
+  const full = {
+    id,
+    timestamp: Date.now(),
+    cashierId: state.cashier.id,
+    customer: '',
+    account: '',
+    note: '',
+    label: '',
+    ...tx,
+    drawerSnapshot,    // <-- audit field; always last so callers can't override
+  };
+  // Always keep newest first.
+  state.transactions.unshift(full);
+  if (state.transactions.length > TXN_HISTORY_CAP) state.transactions.length = TXN_HISTORY_CAP;
+  // Note: caller is responsible for safeSave() — but we never throw here.
+}
+
+function renderTxnScreen() {
+  $('#txn-search').value = '';
+  txnQuery = '';
+  txnFilter = 'all';
+  $$('#txn-filter .filter-chip').forEach(c => c.classList.toggle('active', c.dataset.f === 'all'));
+  renderTxnList();
+}
+
+function renderTxnList() {
+  const list = $('#txn-list');
+  const today = todayKey();
+  const q = txnQuery.toLowerCase().trim();
+  let txns = state.transactions.slice();
+
+  if (txnFilter === 'credit')      txns = txns.filter(t => t.type === 'credit');
+  else if (txnFilter === 'debit')  txns = txns.filter(t => t.type === 'debit');
+  else if (txnFilter === 'today')  txns = txns.filter(t => dateKey(t.timestamp) === today);
+  else if (txnFilter === 'system') txns = txns.filter(t => t.type === 'system' || t.type === 'swap');
+
+  if (q) {
+    txns = txns.filter(t => {
+      const hay = [
+        t.customer, t.account, t.id, t.label, t.note,
+        String(t.amount), formatINR(t.amount)
+      ].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  // Always sort newest-first defensively.
+  txns.sort((a,b) => b.timestamp - a.timestamp);
+
+  if (txns.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/></svg>
+        <div class="title">No transactions</div>
+        <div class="sub">${q ? 'Try a different search.' : 'Transactions will appear here.'}</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Build using DOM nodes (safer escaping for user-supplied fields).
+  list.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  for (const t of txns) {
+    // CSS class: 'swap' uses the same neutral 'system' look (both are non-customer ops).
+    const cls = (t.type === 'swap') ? 'system' : t.type;
+    const time = new Date(t.timestamp).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    const amountSign = t.type === 'credit' ? '+' : t.type === 'debit' ? '−' : '';
+    let iconHtml;
+    if (t.type === 'credit') {
+      iconHtml = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12l7-7 7 7"/></svg>';
+    } else if (t.type === 'debit') {
+      iconHtml = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7 7 7-7"/></svg>';
+    } else if (t.type === 'swap') {
+      iconHtml = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/></svg>';
+    } else {
+      iconHtml = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+    }
+    let label;
+    if (t.type === 'system') label = t.label || 'System';
+    else if (t.type === 'swap') label = t.label || 'Swap / Exchange';
+    else label = t.customer || 'Customer';
+
+    const item = document.createElement('div');
+    item.className = 'txn-item';
+    item.dataset.id = t.id;
+    item.setAttribute('role', 'button');
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('aria-label', 'View transaction ' + (t.id || ''));
+
+    const icon = document.createElement('div');
+    icon.className = 'txn-icon ' + cls;
+    icon.innerHTML = iconHtml;
+
+    const info = document.createElement('div');
+    info.className = 'txn-info';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'txn-name';
+    nameEl.textContent = label;
+    const metaEl = document.createElement('div');
+    metaEl.className = 'txn-meta';
+    if (t.type === 'system' || t.type === 'swap') {
+      const idSpan = document.createElement('span');
+      idSpan.className = 'txn-id';
+      idSpan.textContent = t.id;
+      metaEl.appendChild(idSpan);
+      metaEl.appendChild(document.createTextNode(' · ' + time));
+    } else {
+      metaEl.appendChild(document.createTextNode((t.account || '—') + ' · ' + time + ' · '));
+      const idSpan = document.createElement('span');
+      idSpan.className = 'txn-id';
+      idSpan.textContent = t.id;
+      metaEl.appendChild(idSpan);
+    }
+    info.appendChild(nameEl);
+    info.appendChild(metaEl);
+
+    const amt = document.createElement('div');
+    amt.className = 'txn-amount ' + cls;
+    amt.textContent = amountSign + '₹' + formatINR(t.amount);
+
+    item.appendChild(icon);
+    item.appendChild(info);
+    item.appendChild(amt);
+    frag.appendChild(item);
+  }
+  list.appendChild(frag);
+}
+
+/* ============================================================================
+   REPORTS
+   ============================================================================ */
+function renderReportsScreen() {
+  // Determine reporting window:
+  //   - If drawer is OPEN  → since openedAt
+  //   - If drawer is CLOSED → last session (between lastClosedAt boundary & previous open)
+  //   - Fallback           → calendar today
+  const isOpen = state.drawer.status === 'open';
+  let windowStart = 0;
+  let windowEnd = Date.now();
+  let openingShown = state.drawer.openingBalance || 0;
+  let closingShown = state.drawer.balance;
+
+  if (isOpen && state.drawer.openedAt) {
+    windowStart = state.drawer.openedAt;
+  } else if (state.drawer.lastClosedAt) {
+    // Show last closed session: find most recent open_day before lastClosedAt.
+    const lastClose = state.drawer.lastClosedAt;
+    let lastOpen = 0;
+    for (const t of state.transactions) {
+      if (t.type === 'system' && t.subtype === 'open_day' && t.timestamp < lastClose) {
+        if (t.timestamp > lastOpen) lastOpen = t.timestamp;
+      }
+    }
+    if (lastOpen) {
+      windowStart = lastOpen;
+      windowEnd = lastClose;
+      closingShown = state.drawer.lastClosingBalance || 0;
+    } else {
+      // Fall back to calendar today
+      const t0 = new Date(); t0.setHours(0,0,0,0);
+      windowStart = t0.getTime();
+      windowEnd = Date.now();
+      openingShown = 0;
+      closingShown = 0;
+    }
+  } else {
+    const t0 = new Date(); t0.setHours(0,0,0,0);
+    windowStart = t0.getTime();
+    windowEnd = Date.now();
+    openingShown = 0;
+    closingShown = 0;
+  }
+
+  let cTot = 0, dTot = 0, cCnt = 0, dCnt = 0;
+  for (const t of state.transactions) {
+    if (t.timestamp < windowStart || t.timestamp > windowEnd) continue;
+    if (t.type === 'credit') { cTot += t.amount; cCnt++; }
+    else if (t.type === 'debit') { dTot += t.amount; dCnt++; }
+  }
+  $('#rep-opening').textContent = formatINR(openingShown);
+  $('#rep-closing').textContent = formatINR(closingShown);
+  $('#rep-credit-total').textContent = formatINR(cTot);
+  $('#rep-debit-total').textContent = formatINR(dTot);
+  $('#rep-credit-count').textContent = cCnt;
+  $('#rep-debit-count').textContent = dCnt;
+
+  // Current denomination breakdown (read-only).
+  const root = $('#report-denom-grid');
+  root.innerHTML = '';
+  for (const d of DENOMINATIONS) {
+    const n = toInt(state.drawer.denoms[d]);
+    const sub = d * n;
+    const row = document.createElement('div');
+    row.className = 'denom-row';
+    row.style.gridTemplateColumns = '80px 1fr 100px';
+    row.innerHTML = `
+      <div class="denom-label"><span class="currency">₹</span>${d}</div>
+      <div style="text-align:center; font-weight:600;">${n}</div>
+      <div class="denom-total ${sub === 0 ? 'zero' : ''}">₹${formatINR(sub)}</div>
+    `;
+    root.appendChild(row);
+  }
+
+  // Exchange Notes nav block: shown only when drawer is open and has notes.
+  const swapBlock = $('#reports-swap-block');
+  if (swapBlock) {
+    swapBlock.style.display =
+      (state.drawer.status === 'open' && state.drawer.balance > 0) ? '' : 'none';
+  }
+}
+
+function exportCSV() {
+  const rows = [['ID','Timestamp','Type','Subtype','Amount','Customer','Account','Note','CashierId']];
+  for (const t of state.transactions) {
+    rows.push([
+      t.id || '',
+      new Date(t.timestamp).toISOString(),
+      t.type || '',
+      t.subtype || '',
+      t.amount,
+      String(t.customer || '').replace(/[\r\n]+/g, ' '),
+      String(t.account || ''),
+      String(t.note || '').replace(/[\r\n]+/g, ' '),
+      t.cashierId || '',
+    ]);
+  }
+  const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+  // Add UTF-8 BOM so Excel recognizes ₹ correctly.
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `transactions-${todayKey()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('Export ready', 'success');
+}
+
+/* ============================================================================
+   FEATURE: TRANSACTION DETAIL POPUP
+   ============================================================================ */
+function openTxnDetail(txnId) {
+  const t = state.transactions.find(x => x.id === txnId);
+  if (!t) {
+    showToast('Transaction not found', 'error');
+    return;
+  }
+
+  const host = $('#txn-detail-host');
+  const iconEl = $('#txn-detail-icon');
+  const titleEl = $('#txn-detail-title');
+  const subEl = $('#txn-detail-subtitle');
+  const sumEl = $('#txn-detail-summary');
+  const denomTitle = $('#txn-detail-denom-title');
+  const denomGrid = $('#txn-detail-denom-grid');
+  const denomTotal = $('#txn-detail-denom-total');
+
+  // Icon + title
+  let iconCls, iconSvg, title;
+  if (t.type === 'credit') {
+    iconCls = 'success';
+    iconSvg = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12l7-7 7 7"/></svg>';
+    title = 'Credit · Cash In';
+  } else if (t.type === 'debit') {
+    iconCls = 'danger';
+    iconSvg = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7 7 7-7"/></svg>';
+    title = 'Debit · Cash Out';
+  } else if (t.type === 'swap') {
+    iconCls = 'warn';
+    iconSvg = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/></svg>';
+    title = 'Swap / Exchange';
+  } else {
+    iconCls = 'warn';
+    iconSvg = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+    title = t.label || 'System';
+  }
+  iconEl.className = 'modal-icon ' + iconCls;
+  iconEl.innerHTML = iconSvg;
+  titleEl.textContent = title;
+
+  // Subtitle: amount in big text + words. For swaps, show value exchanged.
+  let amountText;
+  if (t.type === 'debit') amountText = '−₹' + formatINR(t.amount);
+  else if (t.type === 'credit') amountText = '+₹' + formatINR(t.amount);
+  else if (t.type === 'swap')   amountText = '₹' + formatINR(t.amount) + ' exchanged';
+  else amountText = '₹' + formatINR(t.amount);
+  subEl.textContent = amountText + (t.amount > 0 && t.type !== 'swap' ? '  ·  ' + amountInWords(t.amount) : '');
+
+  // Detail rows — handle missing data gracefully.
+  const rows = [];
+  if (t.type === 'credit' || t.type === 'debit') {
+    rows.push(['Customer', t.customer || '— (not recorded)']);
+    rows.push(['Account', t.account || '— (not recorded)']);
+  }
+  let typeLabel;
+  if (t.type === 'credit')      typeLabel = 'Credit (Deposit)';
+  else if (t.type === 'debit')  typeLabel = 'Debit (Withdrawal)';
+  else if (t.type === 'swap')   typeLabel = 'Swap / Exchange';
+  else                          typeLabel = 'System';
+  rows.push(['Type', typeLabel]);
+  if (t.subtype) rows.push(['Action', humanizeSubtype(t.subtype)]);
+  if (t.type === 'swap') {
+    rows.push(['Value exchanged', '₹' + formatINR(t.amount)]);
+  } else {
+    rows.push(['Amount', '₹' + formatINR(t.amount)]);
+  }
+  rows.push(['Date', new Date(t.timestamp).toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' })]);
+  rows.push(['Time', new Date(t.timestamp).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' })]);
+  rows.push(['Transaction ID', t.id || '—']);
+  if (t.cashierId) rows.push(['Cashier', t.cashierId]);
+  if (t.note) rows.push(['Remarks', t.note]);
+  if (t.meta && typeof t.meta === 'object') {
+    if (typeof t.meta.expected === 'number') rows.push(['Expected', '₹' + formatINR(t.meta.expected)]);
+    if (typeof t.meta.counted === 'number') rows.push(['Counted', '₹' + formatINR(t.meta.counted)]);
+    if (typeof t.meta.variance === 'number' && t.meta.variance !== 0) {
+      const v = t.meta.variance;
+      rows.push(['Variance', (v > 0 ? '+' : '−') + '₹' + formatINR(Math.abs(v))]);
+    }
+  }
+
+  // Render summary rows safely (no innerHTML for user data).
+  sumEl.innerHTML = '';
+  for (const [l, r] of rows) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const lEl = document.createElement('span'); lEl.className = 'l'; lEl.textContent = String(l);
+    const rEl = document.createElement('span'); rEl.className = 'r'; rEl.textContent = String(r);
+    row.appendChild(lEl); row.appendChild(rEl);
+    sumEl.appendChild(row);
+  }
+  sumEl.style.display = '';
+
+  // Denomination breakdown — for swaps, render both Out and In sections.
+  if (t.type === 'swap') {
+    // Prefer canonical t.remove / t.add (current spec); fall back to meta.out / meta.in
+    // for transactions saved by older versions of the app.
+    const meta = (t.meta && typeof t.meta === 'object') ? t.meta : {};
+    const outDenoms = (t.remove && typeof t.remove === 'object') ? t.remove
+                    : (meta.out && typeof meta.out === 'object') ? meta.out
+                    : {};
+    const inDenoms  = (t.add && typeof t.add === 'object') ? t.add
+                    : (meta.in && typeof meta.in === 'object') ? meta.in
+                    : {};
+    const outUsed = DENOMINATIONS.filter(d => toInt(outDenoms[d]) > 0);
+    const inUsed  = DENOMINATIONS.filter(d => toInt(inDenoms[d])  > 0);
+
+    denomTitle.style.display = '';
+    denomTitle.textContent = 'Notes Out (removed from drawer)';
+    denomGrid.style.display = '';
+    denomGrid.innerHTML = '';
+    let outSum = 0;
+    for (const d of outUsed) {
+      const n = toInt(outDenoms[d]);
+      const sub = d * n;
+      outSum += sub;
+      const row = document.createElement('div');
+      row.className = 'denom-row';
+      row.innerHTML = `
+        <div class="denom-label"><span class="currency">₹</span>${d}</div>
+        <div style="text-align:center; font-weight:700; font-family:var(--font-display);">${d} × ${n}</div>
+        <div class="denom-total">₹${formatINR(sub)}</div>
+      `;
+      denomGrid.appendChild(row);
+    }
+    if (outUsed.length === 0) {
+      const row = document.createElement('div');
+      row.style.padding = '12px';
+      row.style.color = 'var(--navy-400)';
+      row.style.fontSize = '13px';
+      row.textContent = '(none recorded)';
+      denomGrid.appendChild(row);
+    }
+
+    // Use the secondary denom-total slot to render Notes In + totals summary.
+    denomTotal.style.display = '';
+    denomTotal.innerHTML = '';
+
+    // Section header for "In"
+    const inHeader = document.createElement('div');
+    inHeader.className = 'row';
+    inHeader.style.fontWeight = '700';
+    inHeader.innerHTML = '<span class="l" style="font-weight:700; color:var(--navy-800);">Notes In (added to drawer)</span><span class="r"></span>';
+    denomTotal.appendChild(inHeader);
+
+    let inSum = 0;
+    for (const d of inUsed) {
+      const n = toInt(inDenoms[d]);
+      const sub = d * n;
+      inSum += sub;
+      const row = document.createElement('div');
+      row.className = 'row';
+      const l = document.createElement('span'); l.className = 'l'; l.textContent = `₹${d} × ${n}`;
+      const r = document.createElement('span'); r.className = 'r'; r.textContent = '₹' + formatINR(sub);
+      row.appendChild(l); row.appendChild(r);
+      denomTotal.appendChild(row);
+    }
+    if (inUsed.length === 0) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const l = document.createElement('span'); l.className = 'l'; l.textContent = '(none recorded)';
+      const r = document.createElement('span'); r.className = 'r'; r.textContent = '';
+      row.appendChild(l); row.appendChild(r);
+      denomTotal.appendChild(row);
+    }
+
+    // Final totals row
+    const totalRow = document.createElement('div');
+    totalRow.className = 'row';
+    totalRow.style.borderTop = '1px solid var(--gray-200)';
+    totalRow.style.marginTop = '6px';
+    totalRow.style.paddingTop = '6px';
+    const lEl = document.createElement('span'); lEl.className = 'l'; lEl.textContent = 'Out / In totals';
+    const rEl = document.createElement('span'); rEl.className = 'r';
+    rEl.textContent = '₹' + formatINR(outSum) + ' / ₹' + formatINR(inSum);
+    rEl.style.color = (outSum === inSum && outSum > 0) ? 'var(--green-600)' : 'var(--red-500)';
+    totalRow.appendChild(lEl); totalRow.appendChild(rEl);
+    denomTotal.appendChild(totalRow);
+  } else {
+    // Standard single-section breakdown for credit/debit/system.
+    const denoms = t.denoms || {};
+    const usedDenoms = DENOMINATIONS.filter(d => toInt(denoms[d]) > 0);
+    if (usedDenoms.length > 0) {
+      denomTitle.style.display = '';
+      denomTitle.textContent = 'Denomination breakdown';
+      denomGrid.style.display = '';
+      denomGrid.innerHTML = '';
+      let denomSum = 0;
+      for (const d of usedDenoms) {
+        const n = toInt(denoms[d]);
+        const sub = d * n;
+        denomSum += sub;
+        const row = document.createElement('div');
+        row.className = 'denom-row';
+        row.innerHTML = `
+          <div class="denom-label"><span class="currency">₹</span>${d}</div>
+          <div style="text-align:center; font-weight:700; font-family:var(--font-display);">${d} × ${n}</div>
+          <div class="denom-total">₹${formatINR(sub)}</div>
+        `;
+        denomGrid.appendChild(row);
+      }
+      // Show total + match indicator
+      denomTotal.style.display = '';
+      denomTotal.innerHTML = '';
+      const totalRow = document.createElement('div');
+      totalRow.className = 'row';
+      const lEl = document.createElement('span'); lEl.className = 'l'; lEl.textContent = 'Denomination total';
+      const rEl = document.createElement('span'); rEl.className = 'r';
+      rEl.textContent = '₹' + formatINR(denomSum);
+      if (denomSum !== t.amount) {
+        rEl.textContent += ' (mismatch ₹' + formatINR(Math.abs(denomSum - t.amount)) + ')';
+        rEl.style.color = 'var(--red-500)';
+      } else {
+        rEl.textContent += ' ✓';
+        rEl.style.color = 'var(--green-600)';
+      }
+      totalRow.appendChild(lEl); totalRow.appendChild(rEl);
+      denomTotal.appendChild(totalRow);
+    } else {
+      denomTitle.style.display = 'none';
+      denomGrid.style.display = 'none';
+      denomGrid.innerHTML = '';
+      denomTotal.style.display = 'none';
+      denomTotal.innerHTML = '';
+    }
+  }
+
+  host.classList.add('show');
+}
+
+function closeTxnDetail() {
+  $('#txn-detail-host').classList.remove('show');
+}
+
+function humanizeSubtype(s) {
+  if (s === 'open_day') return 'Day Opened';
+  if (s === 'close_day') return 'Day Closed';
+  return s;
+}
+
+/* ============================================================================
+   FEATURE: SWAP / EXCHANGE — drawer-level (real cashier-grade)
+   ----------------------------------------------------------------------------
+   Single source of truth: state.drawer.denoms
+   `state.drawer.balance` is treated as a CACHED derived value, always
+   recomputed from sumDenoms() after every mutation. migrate() reconciles it
+   on load. Never write to balance without calling reconcileBalance().
+
+   Swap flow:
+     - User specifies notes to REMOVE from the drawer (give to customer)
+     - User specifies notes to ADD into the drawer    (take from customer)
+     - Validation:
+         * For each denom: remove[d] <= drawer.denoms[d]    (cannot over-remove)
+         * sum(remove) === sum(add)                         (exchange is equal)
+         * Resulting drawer count per denom <= MAX_NOTES_PER_DENOM
+     - On Apply:
+         * drawer.denoms[d] = drawer.denoms[d] - remove[d] + add[d] for all d
+         * Zero entries pruned from the saved transaction record
+         * Balance reconciled from denoms; saved to localStorage
+         * Logs a transaction { id, type:'swap', remove, add, time }
+           plus meta.out/meta.in aliases so older readers keep working
+   ============================================================================ */
+
+// Working state for the modal (separate from persisted state).
+let swapState = {
+  remove: createEmptyDenoms(),  // notes leaving the drawer
+  add:    createEmptyDenoms(),  // notes coming into the drawer
+  busy:   false,
+};
+
+/**
+ * Recompute balance from denoms after enforcing drawer invariants.
+ * Call this after EVERY mutation to drawer.denoms.
+ *   - Negative or non-finite counts → clamped to 0
+ *   - Counts above MAX_NOTES_PER_DENOM → clamped down
+ *   - Missing denomination keys → defaulted to 0
+ * The live drawer KEEPS all denomination keys (zero or not); we only prune
+ * zeros when writing transaction records.
+ */
+function reconcileBalance() {
+  cleanDrawerInvariants();   // single source of correctness for the drawer
+}
+
+/**
+ * Open the Exchange Notes modal. Validates pre-conditions.
+ */
+function openSwapPanel() {
+  if (state.drawer.status !== 'open') {
+    showToast('Open the drawer first', 'warn');
+    return;
+  }
+  if (state.drawer.balance <= 0) {
+    showToast('Drawer is empty — nothing to exchange', 'warn');
+    return;
+  }
+
+  // Reset working state.
+  resetDenoms(swapState.remove);
+  resetDenoms(swapState.add);
+  swapState.busy = false;
+
+  // Build both grids using the existing denom-grid component.
+  // REMOVE grid: each row capped at the drawer's current count for that denom.
+  buildDenomGrid('#swap-out-grid', swapState.remove, {
+    onChange: updateSwapPreview,
+    max: (denom) => toInt(state.drawer.denoms[denom]),
+  });
+  // ADD grid: only capped at MAX_NOTES_PER_DENOM (handled by builder default).
+  buildDenomGrid('#swap-in-grid', swapState.add, {
+    onChange: updateSwapPreview,
+  });
+
+  $('#swap-global-error').style.display = 'none';
+  $('#swap-global-error').textContent = '';
+  setBtnLoading($('#swap-confirm'), false);
+
+  updateSwapPreview();
+  $('#swap-host').classList.add('show');
+}
+
+function closeSwapPanel() {
+  if (swapState.busy) return; // do not allow closing mid-commit
+  $('#swap-host').classList.remove('show');
+  resetDenoms(swapState.remove);
+  resetDenoms(swapState.add);
+}
+
+/** Reset both grids back to empty without closing the modal. */
+function resetSwapPanel() {
+  if (swapState.busy) return;
+  resetDenoms(swapState.remove);
+  resetDenoms(swapState.add);
+  // syncDenomGrid pushes the cleared values back into the input fields.
+  const outRoot = document.getElementById('swap-out-grid');
+  const inRoot  = document.getElementById('swap-in-grid');
+  if (outRoot) syncDenomGrid(outRoot, swapState.remove);
+  if (inRoot)  syncDenomGrid(inRoot,  swapState.add);
+  $('#swap-global-error').style.display = 'none';
+  $('#swap-global-error').textContent = '';
+  updateSwapPreview();
+  showToast('Cleared', 'warn');
+}
+
+/**
+ * Live preview: recomputes totals + match indicator + Apply button state.
+ * Wired to both grids via onChange.
+ */
+function updateSwapPreview() {
+  const totalOut = sumDenoms(swapState.remove);
+  const totalIn  = sumDenoms(swapState.add);
+  const diff = totalIn - totalOut;
+
+  // Section subtotals
+  $('#swap-out-total').textContent = formatINR(totalOut);
+  $('#swap-in-total').textContent  = formatINR(totalIn);
+
+  // Compare block (Out / In / Difference)
+  $('#swap-cmp-out').textContent = '₹' + formatINR(totalOut);
+  $('#swap-cmp-in').textContent  = '₹' + formatINR(totalIn);
+
+  const diffEl = $('#swap-cmp-diff');
+  const diffLabelEl = $('#swap-cmp-diff-label');
+  if (diff === 0 && totalOut === 0) {
+    diffLabelEl.textContent = 'Status';
+    diffEl.textContent = '— Enter notes';
+    diffEl.style.color = '';
+  } else if (diff === 0) {
+    diffLabelEl.textContent = 'Status';
+    diffEl.textContent = '✔ Balanced';
+    diffEl.style.color = 'var(--green-600)';
+  } else if (diff > 0) {
+    diffLabelEl.textContent = 'Status';
+    diffEl.textContent = '✖ Over by ₹' + formatINR(diff);
+    diffEl.style.color = 'var(--red-500)';
+  } else {
+    diffLabelEl.textContent = 'Status';
+    diffEl.textContent = '✖ Short by ₹' + formatINR(-diff);
+    diffEl.style.color = 'var(--red-500)';
+  }
+
+  // Per-section indicator boxes (color-coded match/mismatch)
+  const outSum = $('#swap-out-summary');
+  const outInd = $('#swap-out-indicator');
+  const inSum  = $('#swap-in-summary');
+  const inInd  = $('#swap-in-indicator');
+
+  if (totalOut === 0) {
+    outSum.className = 'denom-summary';
+    outInd.textContent = 'Enter notes';
+  } else if (!removeWithinDrawer(swapState.remove)) {
+    outSum.className = 'denom-summary mismatch';
+    outInd.textContent = 'Exceeds drawer';
+  } else {
+    outSum.className = 'denom-summary match';
+    outInd.textContent = '✓ Available';
+  }
+
+  if (totalIn === 0) {
+    inSum.className = 'denom-summary';
+    inInd.textContent = 'Enter notes';
+  } else if (totalIn === totalOut && totalOut > 0) {
+    inSum.className = 'denom-summary match';
+    inInd.textContent = '✓ Matches Out';
+  } else {
+    inSum.className = 'denom-summary mismatch';
+    inInd.textContent = totalIn > totalOut ? 'Over' : 'Short';
+  }
+
+  // Validation gate for Apply button
+  const errEl = $('#swap-global-error');
+  const applyBtn = $('#swap-confirm');
+
+  // Look ahead: would resulting denom count exceed the per-denom maximum?
+  let inOverflow = false;
+  for (const d of DENOMINATIONS) {
+    const after = toInt(state.drawer.denoms[d]) - toInt(swapState.remove[d]) + toInt(swapState.add[d]);
+    if (after > MAX_NOTES_PER_DENOM) { inOverflow = true; break; }
+  }
+
+  errEl.style.display = 'none';
+  errEl.textContent = '';
+
+  if (totalOut === 0 && totalIn === 0) {
+    applyBtn.disabled = true;
+    errEl.textContent = 'Enter swap values';
+    errEl.style.display = 'block';
+  } else if (!removeWithinDrawer(swapState.remove)) {
+    applyBtn.disabled = true;
+    errEl.textContent = 'You are removing more notes than the drawer has. Reduce the Remove amounts.';
+    errEl.style.display = 'block';
+  } else if (totalOut === 0) {
+    applyBtn.disabled = true;
+    errEl.textContent = 'Enter notes to give to the customer (Remove side).';
+    errEl.style.display = 'block';
+  } else if (totalIn === 0) {
+    applyBtn.disabled = true;
+    errEl.textContent = 'Enter notes to take from the customer (Add side).';
+    errEl.style.display = 'block';
+  } else if (totalOut !== totalIn) {
+    applyBtn.disabled = true;
+    errEl.textContent = `Total Out (₹${formatINR(totalOut)}) must equal Total In (₹${formatINR(totalIn)}).`;
+    errEl.style.display = 'block';
+  } else if (inOverflow) {
+    applyBtn.disabled = true;
+    errEl.textContent = 'One denomination would exceed the maximum after this swap.';
+    errEl.style.display = 'block';
+  } else if (denomsAreIdentical(swapState.remove, swapState.add)) {
+    applyBtn.disabled = true;
+    errEl.textContent = 'Remove and Add are identical — nothing to exchange.';
+    errEl.style.display = 'block';
+  } else {
+    applyBtn.disabled = false;
+  }
+}
+
+/** True if every remove[d] <= drawer.denoms[d]. */
+function removeWithinDrawer(remove) {
+  for (const d of DENOMINATIONS) {
+    if (toInt(remove[d]) > toInt(state.drawer.denoms[d])) return false;
+  }
+  return true;
+}
+
+/** True if two denom maps have identical counts on every denomination. */
+function denomsAreIdentical(a, b) {
+  for (const d of DENOMINATIONS) {
+    if (toInt(a[d]) !== toInt(b[d])) return false;
+  }
+  return true;
+}
+
+/** Returns a NEW object containing only non-zero denomination entries. */
+function cleanZeroDenoms(d) {
+  const out = {};
+  for (const k of DENOMINATIONS) {
+    const n = toInt(d[k]);
+    if (n > 0) out[k] = n;
+  }
+  return out;
+}
+
+/**
+ * Apply the swap to the drawer + log a 'swap' transaction.
+ * Re-validates everything at commit time. Rolls back on any anomaly.
+ */
+function commitSwap() {
+  if (swapState.busy) return;
+  if (state.drawer.status !== 'open') {
+    showToast('Drawer is closed — swap cancelled', 'error');
+    return;
+  }
+
+  const totalOut = sumDenoms(swapState.remove);
+  const totalIn  = sumDenoms(swapState.add);
+
+  // Strict re-checks at commit time (defense-in-depth).
+  if (totalOut === 0 && totalIn === 0) {
+    showToast('Enter swap values', 'error');
+    return;
+  }
+  if (totalOut <= 0 || totalIn <= 0) {
+    showToast('Both Remove and Add must have notes', 'error');
+    return;
+  }
+  if (totalOut !== totalIn) {
+    showToast('Out and In totals must match', 'error');
+    return;
+  }
+  if (!removeWithinDrawer(swapState.remove)) {
+    showToast('Cannot remove more than drawer holds', 'error');
+    return;
+  }
+  if (denomsAreIdentical(swapState.remove, swapState.add)) {
+    showToast('Nothing to exchange', 'warn');
+    return;
+  }
+
+  // Snapshot for rollback if invariants fail post-mutation.
+  const beforeBalance = state.drawer.balance;
+  const beforeDenoms  = { ...state.drawer.denoms };
+
+  swapState.busy = true;
+  setBtnLoading($('#swap-confirm'), true);
+
+  // Apply: subtract REMOVE, add ADD. Builds a fresh denom map.
+  const newDenoms = { ...state.drawer.denoms };
+  for (const d of DENOMINATIONS) {
+    newDenoms[d] = toInt(newDenoms[d]) - toInt(swapState.remove[d]) + toInt(swapState.add[d]);
+  }
+  // Sanity: no negative or overflowing entries.
+  for (const d of DENOMINATIONS) {
+    if (newDenoms[d] < 0 || newDenoms[d] > MAX_NOTES_PER_DENOM) {
+      swapState.busy = false;
+      setBtnLoading($('#swap-confirm'), false);
+      showToast('Swap aborted — invalid resulting state', 'error');
+      return;
+    }
+  }
+
+  state.drawer.denoms = newDenoms;
+  reconcileBalance();
+
+  // Hard invariant: total drawer value must be unchanged.
+  if (state.drawer.balance !== beforeBalance) {
+    // Roll back. Should be impossible given pre-validation.
+    state.drawer.denoms = beforeDenoms;
+    reconcileBalance();
+    swapState.busy = false;
+    setBtnLoading($('#swap-confirm'), false);
+    showToast('Swap aborted — balance check failed', 'error');
+    return;
+  }
+
+  // Build the cleaned breakdowns for the audit record (zero entries pruned).
+  const removeClean = cleanZeroDenoms(swapState.remove);
+  const addClean    = cleanZeroDenoms(swapState.add);
+
+  // Log the swap transaction. Top-level `remove`/`add` match the spec;
+  // `denoms` + `meta.out` / `meta.in` are kept for back-compat with older readers.
+  pushTransaction({
+    type: 'swap',
+    amount: totalOut,                  // value exchanged
+    label: 'Swap / Exchange',
+    customer: '',
+    account: '',
+    note: '',
+    remove: removeClean,               // <-- spec field
+    add:    addClean,                  // <-- spec field
+    denoms: removeClean,               // back-compat for txn list rendering
+    meta: {
+      out: removeClean,
+      in:  addClean,
+      value: totalOut,
+    },
+  });
+
+  safeSave();
+
+  swapState.busy = false;
+  setBtnLoading($('#swap-confirm'), false);
+  $('#swap-host').classList.remove('show');
+
+  // Clear working state so a re-open starts fresh.
+  resetDenoms(swapState.remove);
+  resetDenoms(swapState.add);
+
+  showToast('Swap successful · ₹' + formatINR(totalOut), 'success');
+
+  // Refresh all screens that depend on drawer / transactions.
+  renderAll();
+}
+
+/* ============================================================================
+   EVENT WIRING
+   ============================================================================ */
+function wireEvents() {
+  // Splash
+  $('#splash').addEventListener('click', goAfterSplash);
+  $('#splash').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') goAfterSplash(); });
+
+  // Avatar (lock)
+  $('#avatar-btn').addEventListener('click', () => {
+    if (getStoredPin()) {
+      pinBuffer = '';
+      renderPinDots('#pin-dots', 0);
+      $('#pin-error').textContent = '\u00A0';
+      if (unlockPad) unlockPad.reset();
+      showScreen('pin-screen');
+      initUnlockPin();
+    }
+  });
+
+  // Module navigation
+  $$('[data-go]').forEach(el => {
+    el.addEventListener('click', () => {
+      if (el.disabled) return;
+      const dest = el.dataset.go;
+      if (dest === 'drawer') { showScreen('screen-drawer'); renderDrawerScreen(); }
+      else if (dest === 'credit') {
+        if (state.drawer.status !== 'open') { showToast('Open drawer first', 'warn'); return; }
+        showScreen('screen-credit'); renderCreditScreen();
+      }
+      else if (dest === 'debit') {
+        if (state.drawer.status !== 'open') { showToast('Open drawer first', 'warn'); return; }
+        if (state.drawer.balance <= 0) { showToast('Drawer is empty', 'warn'); return; }
+        showScreen('screen-debit'); renderDebitScreen();
+      }
+      else if (dest === 'txns') { showScreen('screen-txns'); renderTxnScreen(); }
+      else if (dest === 'reports') { showScreen('screen-reports'); renderReportsScreen(); }
+    });
+  });
+
+  // Day action shortcut
+  $('#day-action-btn').addEventListener('click', () => {
+    showScreen('screen-drawer');
+    renderDrawerScreen();
+    if (state.drawer.status === 'open') showCloseDayUI();
+  });
+
+  // Back buttons
+  $$('[data-back]').forEach(b => {
+    b.addEventListener('click', () => { showScreen('dashboard'); renderDashboard(); });
+  });
+
+  // Drawer
+  $('#btn-open-day').addEventListener('click', openDay);
+  $('#btn-show-close').addEventListener('click', showCloseDayUI);
+  $('#btn-cancel-close').addEventListener('click', () => {
+    $('#close-day-block').style.display = 'none';
+    $('#close-day-trigger').style.display = '';
+  });
+  $('#btn-close-day').addEventListener('click', closeDay);
+
+  // ---------- Credit ----------
+  $('#credit-name').addEventListener('input', () => {
+    $('#f-credit-name').classList.remove('has-error');
+    validateCreditButton();
+  });
+  $('#credit-acct').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 18);
+    $('#f-credit-acct').classList.remove('has-error');
+    validateCreditButton();
+  });
+  $('#credit-amount').addEventListener('input', (e) => {
+    const v = sanitize(e.target.value, { asString: true, maxLen: 8 });
+    e.target.value = v;
+    $('#f-credit-amount').classList.remove('has-error');
+    $('#credit-amount-words').textContent = amountInWords(v);
+    updateCreditSummary();
+  });
+  // Block paste of non-digits / scientific notation.
+  ['credit-amount','credit-acct','debit-amount','debit-acct'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('keydown', (e) => {
+      if (['e','E','+','-','.',','].includes(e.key)) e.preventDefault();
+    });
+  });
+  $$('#screen-credit .suggest-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const v = parseInt(chip.dataset.amt, 10) || 0;
+      if (v === 0) { $('#credit-amount').value = ''; }
+      else {
+        const cur = toInt($('#credit-amount').value);
+        $('#credit-amount').value = String(Math.min(cur + v, MAX_TXN_AMOUNT));
+      }
+      $('#credit-amount').dispatchEvent(new Event('input'));
+    });
+  });
+  $('#btn-credit-submit').addEventListener('click', submitCredit);
+
+  // ---------- Debit ----------
+  $('#debit-name').addEventListener('input', () => {
+    $('#f-debit-name').classList.remove('has-error');
+    validateDebitButton();
+  });
+  $('#debit-acct').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 18);
+    $('#f-debit-acct').classList.remove('has-error');
+    validateDebitButton();
+  });
+  $('#debit-amount').addEventListener('input', (e) => {
+    const v = sanitize(e.target.value, { asString: true, maxLen: 8 });
+    e.target.value = v;
+    $('#f-debit-amount').classList.remove('has-error');
+    $('#debit-amount-words').textContent = amountInWords(v);
+    updateDebitSummary();
+  });
+  $$('#screen-debit .suggest-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const v = parseInt(chip.dataset.amt, 10) || 0;
+      if (v === 0) { $('#debit-amount').value = ''; }
+      else {
+        const cur = toInt($('#debit-amount').value);
+        const cap = Math.min(state.drawer.balance, MAX_TXN_AMOUNT);
+        $('#debit-amount').value = String(Math.min(cur + v, cap));
+      }
+      $('#debit-amount').dispatchEvent(new Event('input'));
+    });
+  });
+  $('#btn-debit-submit').addEventListener('click', submitDebit);
+
+  // ---------- Transactions ----------
+  $('#txn-search').addEventListener('input', debounce((e) => {
+    txnQuery = e.target.value;
+    renderTxnList();
+  }, 150));
+  $('#txn-filter').addEventListener('click', (e) => {
+    const chip = e.target.closest('.filter-chip');
+    if (!chip) return;
+    txnFilter = chip.dataset.f;
+    $$('#txn-filter .filter-chip').forEach(c => c.classList.toggle('active', c === chip));
+    renderTxnList();
+  });
+
+  // Tap a transaction to open detail popup (event delegation — survives re-render)
+  $('#txn-list').addEventListener('click', (e) => {
+    const item = e.target.closest('.txn-item');
+    if (!item || !item.dataset.id) return;
+    openTxnDetail(item.dataset.id);
+  });
+  $('#txn-list').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const item = e.target.closest('.txn-item');
+    if (!item || !item.dataset.id) return;
+    e.preventDefault();
+    openTxnDetail(item.dataset.id);
+  });
+
+  // ---------- Transaction detail modal ----------
+  $('#txn-detail-close').addEventListener('click', closeTxnDetail);
+  $('#txn-detail-host').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeTxnDetail();
+  });
+
+  // ---------- Swap / Exchange modal (drawer-level) ----------
+  $('#btn-show-swap').addEventListener('click', openSwapPanel);
+  $('#swap-cancel').addEventListener('click', closeSwapPanel);
+  $('#swap-reset').addEventListener('click', resetSwapPanel);
+  $('#swap-host').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeSwapPanel();
+  });
+  $('#swap-confirm').addEventListener('click', commitSwap);
+
+  // ---------- Reports ----------
+  $('#btn-export').addEventListener('click', exportCSV);
+  $('#btn-print').addEventListener('click', () => window.print());
+  // Reports → Exchange Notes shortcut: jump to Drawer screen, then open swap modal.
+  $('#btn-reports-swap').addEventListener('click', () => {
+    if (state.drawer.status !== 'open') {
+      showToast('Open the drawer first', 'warn');
+      return;
+    }
+    showScreen('screen-drawer');
+    renderDrawerScreen();
+    // Defer so the screen swap finishes paint before the modal mounts.
+    setTimeout(openSwapPanel, 50);
+  });
+
+  // ---------- Modal ----------
+  $('#modal-cancel').addEventListener('click', () => {
+    // Release any form button that was locked while modal was open.
+    if (pendingFormUnlock) { setBtnLoading(pendingFormUnlock, false); pendingFormUnlock = null; }
+    hideConfirm();
+  });
+  $('#modal-host').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      if (pendingFormUnlock) { setBtnLoading(pendingFormUnlock, false); pendingFormUnlock = null; }
+      hideConfirm();
+    }
+  });
+  $('#modal-confirm').addEventListener('click', () => {
+    if (modalBusy) return;
+    const cb = confirmCallback;
+    // Single-shot: clear before invoking so a second click never re-fires.
+    confirmCallback = null;
+    if (typeof cb === 'function') {
+      try { cb(); }
+      catch (err) {
+        console.error('Confirm handler threw:', err);
+        modalBusy = false;
+        setBtnLoading($('#modal-confirm'), false);
+        hideConfirm();
+        showToast('Something went wrong — please retry', 'error');
+      }
+    }
+    // pendingFormUnlock is cleared inside the success path of each handler.
+    pendingFormUnlock = null;
+  });
+
+  // ---------- Online/offline ----------
+  window.addEventListener('online', () => $('#sync-banner').classList.remove('show'));
+  window.addEventListener('offline', () => $('#sync-banner').classList.add('show'));
+  if (!navigator.onLine) $('#sync-banner').classList.add('show');
+
+  // ---------- Cross-tab safety ----------
+  // Only adopt external state when we're on a "safe" screen (dashboard / list / report).
+  // Never blow away an in-flight transaction form.
+  window.addEventListener('storage', (e) => {
+    if (e.key !== STORAGE_KEY) return;
+    const safeScreens = ['dashboard', 'screen-txns', 'screen-reports', 'splash', 'pin-screen', 'setup-pin-screen'];
+    if (!safeScreens.includes(activeScreen)) {
+      showToast('Data updated in another tab — refresh after this transaction', 'warn');
+      return;
+    }
+    state = migrate(safeLoad());
+    if (activeScreen === 'dashboard') renderDashboard();
+    else if (activeScreen === 'screen-txns') renderTxnList();
+    else if (activeScreen === 'screen-reports') renderReportsScreen();
+    showToast('Data refreshed from another tab', 'warn');
+  });
+
+  // Refresh dashboard on tab focus.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && activeScreen === 'dashboard') renderDashboard();
+  });
+
+  // Note: Enter-key submission is handled by handleGlobalEnter (registered in bootKeyboardLayer).
+  // It clicks the form's primary submit if enabled, instead of just blurring.
+
+  // Warn on accidental refresh during an in-flight form with data.
+  window.addEventListener('beforeunload', (e) => {
+    const dirty = isFormDirty();
+    if (dirty) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+}
+
+function isFormDirty() {
+  if (activeScreen === 'screen-credit') {
+    return ($('#credit-name').value || '').length > 0 ||
+           ($('#credit-acct').value || '').length > 0 ||
+           toInt($('#credit-amount').value) > 0 ||
+           sumDenoms(creditDenoms) > 0;
+  }
+  if (activeScreen === 'screen-debit') {
+    return ($('#debit-name').value || '').length > 0 ||
+           ($('#debit-acct').value || '').length > 0 ||
+           toInt($('#debit-amount').value) > 0 ||
+           sumDenoms(debitDenoms) > 0;
+  }
+  if (activeScreen === 'screen-drawer') {
+    return sumDenoms(openDenoms) > 0 || sumDenoms(closeDenoms) > 0;
+  }
+  return false;
+}
+
+function debounce(fn, ms) {
+  let t;
+  return function (...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); };
+}
+
+/* ============================================================================
+   KEYBOARD & DESKTOP ACCESSIBILITY
+   ----------------------------------------------------------------------------
+   - PIN pads accept digits 0-9 and Backspace from the keyboard.
+   - Modals: ESC closes; focus moves into the modal on open and restores on close;
+     Tab is trapped within the modal so it can't reach the screen behind.
+   - Enter inside a form field submits the form's primary action (when enabled).
+   - Inactive screens get the `inert` attribute so Tab can't reach them.
+   - `?` opens a keyboard shortcuts cheat-sheet (uses the existing modal system).
+   ============================================================================ */
+
+// Tracks the element that had focus before a modal opened, so we can restore it.
+let _focusReturnTarget = null;
+
+/** Focusable selector. */
+const FOCUSABLE_SEL = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+  '[role="button"]:not([disabled])',
+].join(',');
+
+function getFocusable(root) {
+  if (!root) return [];
+  return Array.from(root.querySelectorAll(FOCUSABLE_SEL))
+    .filter(el => {
+      // Skip hidden / display:none elements
+      if (el.offsetParent === null && el.tagName !== 'BODY') {
+        // offsetParent is null for fixed-positioned elements too — check style
+        const cs = window.getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+      }
+      return !el.hasAttribute('inert');
+    });
+}
+
+/**
+ * Mark every screen except `activeId` as inert so Tab can't reach them.
+ * Modals are NOT screens — they live outside the .screen tree.
+ */
+function applyScreenInert(activeId) {
+  document.querySelectorAll('.screen').forEach(s => {
+    if (s.id === activeId) {
+      s.removeAttribute('inert');
+      s.removeAttribute('aria-hidden');
+    } else {
+      s.setAttribute('inert', '');
+      s.setAttribute('aria-hidden', 'true');
+    }
+  });
+}
+
+/**
+ * When a modal opens, mark all .screen elements AND the other modal-hosts as inert
+ * so focus can't leak out. Returns a cleanup fn to restore.
+ */
+function applyModalInert(activeModalHostId) {
+  const screens = document.querySelectorAll('.screen');
+  const modals = document.querySelectorAll('.modal-host');
+  const previouslyInert = [];
+  screens.forEach(s => {
+    if (!s.hasAttribute('inert')) {
+      previouslyInert.push({ el: s, hadAriaHidden: s.hasAttribute('aria-hidden') });
+      s.setAttribute('inert', '');
+      s.setAttribute('aria-hidden', 'true');
+    }
+  });
+  modals.forEach(m => {
+    if (m.id !== activeModalHostId) {
+      if (!m.hasAttribute('inert')) {
+        previouslyInert.push({ el: m, hadAriaHidden: m.hasAttribute('aria-hidden') });
+        m.setAttribute('inert', '');
+      }
+    }
+  });
+  return () => {
+    previouslyInert.forEach(({ el, hadAriaHidden }) => {
+      el.removeAttribute('inert');
+      if (!hadAriaHidden) el.removeAttribute('aria-hidden');
+    });
+    // Re-apply screen inert based on which screen is currently active.
+    applyScreenInert(activeScreen);
+  };
+}
+
+// Stack of cleanup functions, one per currently-open modal.
+let _modalInertStack = [];
+
+/**
+ * Move focus to the first sensible focusable element in `root`.
+ * Preference order: primary action button → first input → first focusable.
+ */
+function focusFirstIn(root) {
+  if (!root) return;
+  // Prefer the primary action (e.g. the Confirm button or the close button).
+  const primary = root.querySelector('.btn-primary:not([disabled])');
+  const firstInput = root.querySelector('input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])');
+  // For confirm-style modals we want the primary; for editing modals we want the first input.
+  // Heuristic: if there's a visible input AND the primary is enabled, focus the input.
+  const target = (firstInput && primary && !primary.disabled) ? firstInput
+               : primary || firstInput || getFocusable(root)[0];
+  if (target) {
+    // Defer one frame so any opening transition completes.
+    requestAnimationFrame(() => {
+      try { target.focus({ preventScroll: false }); } catch (e) { try { target.focus(); } catch(_){} }
+    });
+  }
+}
+
+/**
+ * Trap Tab inside `root`. Call on keydown.
+ */
+function trapTabIn(root, e) {
+  if (e.key !== 'Tab') return;
+  const focusables = getFocusable(root);
+  if (focusables.length === 0) {
+    e.preventDefault();
+    return;
+  }
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = document.activeElement;
+  if (e.shiftKey) {
+    if (active === first || !root.contains(active)) {
+      e.preventDefault();
+      last.focus();
+    }
+  } else {
+    if (active === last || !root.contains(active)) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+}
+
+/**
+ * Wire keyboard handling for any modal-host: ESC to close, Tab trap, focus mgmt.
+ * Called once at boot per modal host. Each modal type gets its own close fn.
+ */
+function wireModalKeyboard(hostId, closeFn) {
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  host.addEventListener('keydown', (e) => {
+    if (!host.classList.contains('show')) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeFn();
+    } else {
+      trapTabIn(host, e);
+    }
+  });
+}
+
+/**
+ * Observe `class="show"` on a modal host and run focus/inert handlers when it toggles.
+ * Returns a teardown but we never need it (host lives forever).
+ */
+function watchModalVisibility(hostId, opts = {}) {
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  let wasShown = host.classList.contains('show');
+  const observer = new MutationObserver(() => {
+    const isShown = host.classList.contains('show');
+    if (isShown && !wasShown) {
+      // Just opened: remember focus, apply inert to backdrop, focus inside modal.
+      _focusReturnTarget = document.activeElement;
+      const cleanup = applyModalInert(hostId);
+      _modalInertStack.push(cleanup);
+      focusFirstIn(host);
+    } else if (!isShown && wasShown) {
+      // Just closed: pop inert, restore focus.
+      const cleanup = _modalInertStack.pop();
+      if (cleanup) cleanup();
+      if (_focusReturnTarget && document.body.contains(_focusReturnTarget)) {
+        try { _focusReturnTarget.focus(); } catch (e) {}
+      }
+      _focusReturnTarget = null;
+    }
+    wasShown = isShown;
+  });
+  observer.observe(host, { attributes: true, attributeFilter: ['class'] });
+}
+
+/**
+ * Wire the PIN pad to accept keyboard input.
+ * Maps:  '0'-'9' → click matching .pin-key
+ *        Backspace/Delete → click data-action="del"
+ */
+function wirePinKeyboard(padSel) {
+  const pad = document.querySelector(padSel);
+  if (!pad) return;
+  // Make the pad container itself focusable so it can receive key events
+  // when the user is on the PIN screen but no specific key is focused.
+  if (!pad.hasAttribute('tabindex')) pad.setAttribute('tabindex', '-1');
+}
+
+/**
+ * Global keydown for the PIN screens. Active only when the PIN screen is showing.
+ */
+function handleGlobalPinKeydown(e) {
+  // Don't intercept if user is typing in an input (none on PIN screens, but defensive).
+  const tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+  let padSel = null;
+  if (activeScreen === 'pin-screen') padSel = '#pin-pad';
+  else if (activeScreen === 'setup-pin-screen') padSel = '#setup-pin-pad';
+  else return;
+
+  if (e.key >= '0' && e.key <= '9') {
+    e.preventDefault();
+    const btn = document.querySelector(`${padSel} .pin-key[data-d="${e.key}"]`);
+    if (btn && !btn.disabled) btn.click();
+  } else if (e.key === 'Backspace' || e.key === 'Delete') {
+    e.preventDefault();
+    const btn = document.querySelector(`${padSel} .pin-key[data-action="del"]`);
+    if (btn && !btn.disabled) btn.click();
+  }
+}
+
+/**
+ * Identify the primary submit button for a given form-screen.
+ * Returns the button element, or null.
+ */
+function primarySubmitFor(screenId) {
+  const map = {
+    'screen-credit': '#btn-credit-submit',
+    'screen-debit':  '#btn-debit-submit',
+    'screen-drawer-open': '#btn-open-day',  // synthetic — actually #screen-drawer
+  };
+  // For the drawer screen we have to pick between Open/Close based on what's visible.
+  if (screenId === 'screen-drawer') {
+    const openBlock = document.getElementById('open-day-block');
+    const closeBlock = document.getElementById('close-day-block');
+    if (openBlock && openBlock.style.display !== 'none') {
+      return document.getElementById('btn-open-day');
+    }
+    if (closeBlock && closeBlock.style.display !== 'none') {
+      return document.getElementById('btn-close-day');
+    }
+    return null;
+  }
+  const sel = map[screenId];
+  return sel ? document.querySelector(sel) : null;
+}
+
+/**
+ * Replace the previous "blur on Enter" global handler with smart submit:
+ * - Inside a modal: Enter clicks the modal's primary button if enabled.
+ * - On a form screen: Enter clicks the screen's primary submit button if enabled.
+ * - In a textarea: Enter inserts a newline (default behavior).
+ * - In a search input: Enter just blurs to dismiss the soft keyboard on mobile.
+ */
+function handleGlobalEnter(e) {
+  if (e.key !== 'Enter') return;
+  const t = e.target;
+  if (!t) return;
+  const tag = t.tagName || '';
+
+  // Allow Enter to break lines inside textareas.
+  if (tag === 'TEXTAREA') return;
+
+  // Search box: just blur (user finished typing).
+  if (t.id === 'txn-search') {
+    e.preventDefault();
+    t.blur();
+    return;
+  }
+
+  // Inside an open modal? Click the modal's primary action.
+  const openModal = document.querySelector('.modal-host.show');
+  if (openModal) {
+    if (tag !== 'INPUT' && tag !== 'SELECT') return;
+    const primary = openModal.querySelector('.btn-primary:not([disabled])');
+    if (primary) {
+      e.preventDefault();
+      primary.click();
+    }
+    return;
+  }
+
+  // On a form screen, click its primary submit.
+  if (tag === 'INPUT' || tag === 'SELECT') {
+    const submitBtn = primarySubmitFor(activeScreen);
+    if (submitBtn && !submitBtn.disabled) {
+      e.preventDefault();
+      submitBtn.click();
+    } else {
+      // Just blur to flush any pending input event.
+      e.preventDefault();
+      t.blur();
+    }
+  }
+}
+
+/**
+ * `?` (Shift+/) opens a keyboard-shortcuts cheat sheet using the standard modal.
+ * `Escape` outside any modal does sensible "back" navigation.
+ */
+function handleGlobalShortcut(e) {
+  // Don't fire while typing.
+  const tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+  if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+    e.preventDefault();
+    showShortcutsHelp();
+    return;
+  }
+
+  // Escape: if no modal is open, navigate "back" from a sub-screen to dashboard.
+  if (e.key === 'Escape') {
+    const openModal = document.querySelector('.modal-host.show');
+    if (openModal) return; // each modal handles its own Esc
+    if (activeScreen && activeScreen !== 'dashboard'
+        && activeScreen !== 'splash'
+        && activeScreen !== 'pin-screen'
+        && activeScreen !== 'setup-pin-screen') {
+      e.preventDefault();
+      showScreen('dashboard');
+      renderDashboard();
+    }
+  }
+}
+
+function showShortcutsHelp() {
+  // Reuse the standard confirm modal as a read-only help dialog.
+  const summary = [
+    ['0–9', 'Enter PIN digit'],
+    ['Backspace', 'Delete PIN digit'],
+    ['Tab / Shift+Tab', 'Move between fields'],
+    ['Enter', 'Submit current form'],
+    ['Esc', 'Cancel / back'],
+    ['?', 'Show this help'],
+  ];
+  showConfirm({
+    icon: 'success',
+    title: 'Keyboard shortcuts',
+    body: 'Use the keyboard to work faster. Mouse and touch keep working too.',
+    summary,
+    confirmText: 'Got it',
+    cancelText: 'Close',
+  }, () => {
+    hideConfirm();
+  });
+}
+
+/**
+ * Make module cards on the dashboard keyboard-activatable.
+ * They're <button> elements already, but on the dashboard one of them is
+ * <button class="module-card" data-go="..."> — Enter/Space already triggers click.
+ * The txn-item rows have role="button" but need explicit Enter/Space handlers
+ * (already wired in renderTxnList event delegation).
+ */
+
+/** Boot the keyboard layer. Call once after DOM is ready. */
+function bootKeyboardLayer() {
+  // PIN pads — tabindex on container so it can receive bubbling key events.
+  wirePinKeyboard('#pin-pad');
+  wirePinKeyboard('#setup-pin-pad');
+
+  // Modal close keyboard handlers (ESC + focus trap).
+  wireModalKeyboard('modal-host', () => {
+    // Re-fire the "Cancel" path so any pendingFormUnlock is released.
+    const cancelBtn = document.getElementById('modal-cancel');
+    if (cancelBtn) cancelBtn.click();
+  });
+  wireModalKeyboard('txn-detail-host', closeTxnDetail);
+  wireModalKeyboard('swap-host', closeSwapPanel);
+
+  // Watch each modal for show/hide to manage focus + inert.
+  watchModalVisibility('modal-host');
+  watchModalVisibility('txn-detail-host');
+  watchModalVisibility('swap-host');
+
+  // Apply initial inert to screens that aren't active.
+  applyScreenInert(activeScreen);
+
+  // Hook into showScreen so inert updates on every navigation.
+  // showScreen itself doesn't dispatch an event, so we monkey-patch its postlude
+  // by observing class changes on .screen elements.
+  const screensObserver = new MutationObserver((muts) => {
+    for (const mut of muts) {
+      if (mut.type === 'attributes' && mut.attributeName === 'class') {
+        const target = mut.target;
+        if (target.classList.contains('active')) {
+          applyScreenInert(target.id);
+          break;
+        }
+      }
+    }
+  });
+  document.querySelectorAll('.screen').forEach(s => {
+    screensObserver.observe(s, { attributes: true, attributeFilter: ['class'] });
+  });
+
+  // Global keyboard listeners.
+  document.addEventListener('keydown', handleGlobalPinKeydown);
+  document.addEventListener('keydown', handleGlobalEnter, true); // capture: pre-empt the older global Enter handler
+  document.addEventListener('keydown', handleGlobalShortcut);
+}
+
+
+function goAfterSplash() {
+  if (activeScreen !== 'splash') return; // already moved on
+  if (!getStoredPin()) {
+    showScreen('setup-pin-screen');
+    initSetupPin();
+  } else {
+    showScreen('pin-screen');
+    initUnlockPin();
+  }
+}
+
+function boot() {
+  state = migrate(safeLoad());
+  wireEvents();
+  bootKeyboardLayer();
+  // Auto-advance from splash after 3s if user doesn't tap.
+  setTimeout(() => {
+    if (activeScreen === 'splash') goAfterSplash();
+  }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+</body>
+</html>
